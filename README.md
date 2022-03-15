@@ -1,5 +1,10 @@
 # vx-iso
-This repo contains the configuration necessary for creating an Arch Linux-based install stick that can be used to write verified VotingWorks images to hardware. After cloning the repo, simply run ```bash doas mkarchiso -v -w /tmp/vxiso-tmp -o out .```. The iso file will be created in the `out/` directory. After creating, use Ventoy to create a bootable stick.
+This repo contains the configuration necessary for creating an Arch Linux-based install stick that can be used to write verified VotingWorks images to hardware. After cloning the repo, simply run 
+```bash
+sudo mkarchiso -v -w /tmp/vxiso-tmp -o out .
+```
+
+The iso file will be created in the `out/` directory. After creating, use Ventoy to create a bootable stick.
 
 <h2> Using Ventoy</h2>
 [Ventoy](https://github.com/ventoy/Ventoy) is an open-source tool for creating bootable USB stick that can boot multiple `.iso` files. Ventoy also supports UEFI Secure Boot as well as the option to put a data partition on the bootable stick. To set it up, do the following:
