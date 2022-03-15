@@ -7,3 +7,7 @@ openssh
 pv
 syslinux
 vim
+efibootmgr
+efitools
+sbsigntools
+edk2-shell

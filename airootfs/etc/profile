@@ -49,4 +49,4 @@ unset TERMCAP
 # Man is much better than us at figuring this out
 unset MANPATH
 
-/usr/share/vx-image/flash-image.sh
+/usr/share/vx-img/flash-image.sh

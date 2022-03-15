@@ -19,3 +19,11 @@ cat /usr/share/vx-img/image.sha256sum
 
 echo "Computing hash..."
 head -c 50G /dev/nvme0n1 | pv -s 50g | sha256sum
+
+# TODO make sure this works on every device
+efibootmgr \
+	--create \
+	--disk /dev/nvme0n1 \
+	--part 1 \
+	--label "VxLinux" \
+	--loader "\\EFI\\debian\\VxLinux-signed.efi"
