@@ -5,8 +5,10 @@ This repo contains the configuration necessary for creating an Arch Linux-based 
 sudo pacman -S archiso
 ```
 
-After cloning the repo, simply run 
+Clone the repo and build the image:
 ```bash
+git clone https://github.com/votingworks/vx-iso
+cd vx-iso
 sudo mkarchiso -v -w /tmp/vxiso-tmp -o out .
 ```
 
