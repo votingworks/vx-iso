@@ -15,6 +15,8 @@ sudo mkarchiso -v -w /tmp/vxiso-tmp -o out .
 The iso file will be created in the `out/` directory. After creating, use Ventoy to create a bootable stick.
 
 <h2> Using Ventoy</h2>
+TODO: Technically Ventoy is not required, but it makes it easier to do for the first run.
+
 Ventoy is an open-source tool for creating bootable USB stick that can boot multiple `.iso` files. Ventoy also supports UEFI Secure Boot as well as the option to put a data partition on the bootable stick. To set it up, do the following:
 
 1. Download Ventoy from [here](https://github.com/ventoy/Ventoy/releases) or from their [website](https://www.ventoy.net/en/download.html). On Arch Linux-based systems, you can download it from the AUR. 
