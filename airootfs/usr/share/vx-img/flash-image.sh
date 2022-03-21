@@ -9,7 +9,7 @@ if [[ $answer != 'y' && $answer != 'Y' ]]; then
 fi
 
 SUCCESS=1
-efi-updatevar -f /etc/efi-keys/DB.auth && efi-updatevar -f /etc/efi-keys/KEK.auth && efi-updatevar -f /etc/efi-keys/PK.auth || SUCCESS=0
+efi-updatevar -f /etc/efi-keys/DB.auth db && efi-updatevar -f /etc/efi-keys/KEK.auth KEK && efi-updatevar -f /etc/efi-keys/PK.auth PK || SUCCESS=0
 
 if [[ $SUCCESS != 1 ]]; then
     echo "Writing the keys failed. Make sure you're in setup mode in your firmware interface. Exiting." 
