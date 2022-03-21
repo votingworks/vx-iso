@@ -5,15 +5,24 @@ echo "Writing new secure boot keys to the device. Proceed? [y/N]:"
 read answer
 
 if [[ $answer != 'y' && $answer != 'Y' ]]; then
-    exit
-fi
+    echo "Continue without updating secure boot keys? [y/N]:"
+    read answer
 
-SUCCESS=1
-efi-updatevar -f /etc/efi-keys/DB.auth db && efi-updatevar -f /etc/efi-keys/KEK.auth KEK && efi-updatevar -f /etc/efi-keys/PK.auth PK || SUCCESS=0
+    if [[ $answer != 'y' && $answer != 'Y' ]]; then
+        exit
+    fi
+else
+    SUCCESS=1
+    efi-updatevar -f /etc/efi-keys/DB.auth db && efi-updatevar -f /etc/efi-keys/KEK.auth KEK && efi-updatevar -f /etc/efi-keys/PK.auth PK || SUCCESS=0
 
-if [[ $SUCCESS != 1 ]]; then
-    echo "Writing the keys failed. Make sure you're in setup mode in your firmware interface. Exiting." 
-    exit
+    if [[ $SUCCESS != 1 ]]; then
+        echo "Writing the keys failed. Make sure you're in setup mode in your firmware interface. Continue anyways? [y/N]:" 
+        read answer
+
+        if [[ $answer != 'y' && $answer != 'Y' ]]; then
+            exit
+        fi
+    fi
 fi
 
 
