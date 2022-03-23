@@ -1,8 +1,8 @@
 # vx-iso
-This repo contains the configuration necessary for creating an Arch Linux-based install stick that can be used to write verified VotingWorks images to hardware. **NOTE** this must be run on an Arch Linux system, as the `mkarchiso` program depends on having Arch utilities like `pacstrap` available to it. First, install `mkarchiso`: 
+This repo contains the configuration necessary for creating an Arch Linux-based install stick that can be used to write verified VotingWorks images to hardware. **NOTE** this must be run on an Arch Linux system, as the `mkarchiso` program depends on having Arch utilities like `pacstrap` available to it. First, install `mkarchiso` and `git`: 
 
 ```
-sudo pacman -S archiso
+sudo pacman -S archiso git
 ```
 
 Clone the repo and build the image:
