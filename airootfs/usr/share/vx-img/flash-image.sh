@@ -39,6 +39,7 @@ mount /dev/sda3 /mnt
 
 echo "Decompressing and writing:"
 lz4 -c -d /mnt/image.img.lz4 | pv -s 50g > /dev/nvme0n1 
+#lz4 -c -d /usr/share/vx-img/image.img.lz4 | pv -s 50g > /dev/nvme0n1 
 
 echo "Now checking that the write was successful."
 echo "The hash should be:"
@@ -48,6 +49,16 @@ echo "Computing hash..."
 head -c 50G /dev/nvme0n1 | pv -s 50g | sha256sum
 
 # TODO make sure this works on every device
+echo "adding a boot entry for Debian shim"
+efibootmgr \
+	--create \
+	--disk /dev/nvme0n1 \
+	--part 1 \
+	--label "grub" \
+	--loader "\\EFI\\debian\\shimx64.efi"
+
+
+echo "adding a boot entry for VxLinux"
 efibootmgr \
 	--create \
 	--disk /dev/nvme0n1 \

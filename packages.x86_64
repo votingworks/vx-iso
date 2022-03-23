@@ -1,6 +1,7 @@
 base
 cloud-init
 linux
+linux-firmware
 mkinitcpio
 mkinitcpio-archiso
 openssh
@@ -11,3 +12,5 @@ efibootmgr
 efitools
 sbsigntools
 edk2-shell
+intel-ucode
+amd-ucode
