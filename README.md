@@ -20,7 +20,7 @@ TODO: Technically Ventoy is not required, but it makes it easier to do for the f
 Ventoy is an open-source tool for creating bootable USB stick that can boot multiple `.iso` files. Ventoy also supports UEFI Secure Boot as well as the option to put a data partition on the bootable stick. To set it up, do the following:
 
 1. Download Ventoy from [here](https://github.com/ventoy/Ventoy/releases) or from their [website](https://www.ventoy.net/en/download.html). On Arch Linux-based systems, you can download it from the AUR. 
-2. After installation, plug in a fresh USB stick and run Ventoy. **Make sure to run Ventoy as root**, so `sudo VentoyGUI.x86_64`. If running Ventory as root doesn't work for you, you can also run it as a webserver and use the browser as the GUI: `sudo VentoyWeb.sh` and navigate to `http://localhost:24680`.
+2. After installation, plug in a fresh USB stick and run Ventoy. **Make sure to run Ventoy as root**, so `sudo VentoyGUI.x86_64`. If running Ventoy as root doesn't work for you, you can also run it as a webserver and use the browser as the GUI: `sudo VentoyWeb.sh` and navigate to `http://localhost:24680`.
 3. Make sure the correct device is found by Ventoy.
 ![image](https://user-images.githubusercontent.com/2686765/158470254-209d9139-f0f9-4939-a6ea-72942538b1de.png)
 3. Make sure "Secure Boot Support is selected ![image](https://user-images.githubusercontent.com/2686765/158470519-a75f2e22-88fa-4e62-8296-30ea22a98953.png)
