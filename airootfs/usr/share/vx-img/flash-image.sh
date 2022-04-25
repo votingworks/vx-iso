@@ -108,7 +108,6 @@ while true; do
     # Get a list of all available disks large enough to take our image, sorted by size
     IFS=$'\n' read -r -d '' -a disks <<< "$(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$_size" '$2 > var {print $1}')"
 
-    echo "${disks[@]}"
     i=1
     for disk in "${disks[@]}"; do
         echo "$i. /dev/$disk"
