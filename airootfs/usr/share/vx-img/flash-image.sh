@@ -1,38 +1,46 @@
 #!/bin/bash
 
 # TODO use dmidecode to detect if we're on a Surface Go
+if sudo dmidecode | grep 'Surface Go'; then
+    _surface=1
+else
+    _surface=0
+fi
+
 
 # TODO use efi-readvar to detect if our keys are already on this device
+_haskeys=0
 
-echo "Writing new secure boot keys to the device. Proceed? [y/N]:"
+if [[ $_surface == 0 && $_haskeys == 0 ]]; then
+    echo "Writing new secure boot keys to the device. Proceed? [y/N]:"
 
-read answer
-
-if [[ $answer != 'y' && $answer != 'Y' ]]; then
-    echo "Continue without updating secure boot keys? [y/N]:"
-    read answer
+    read -r answer
 
     if [[ $answer != 'y' && $answer != 'Y' ]]; then
-        exit
-    fi
-else
-    SUCCESS=1
-    efi-updatevar -f /etc/efi-keys/DB.auth db && efi-updatevar -f /etc/efi-keys/KEK.auth KEK && efi-updatevar -f /etc/efi-keys/PK.auth PK || SUCCESS=0
-
-    if [[ $SUCCESS != 1 ]]; then
-        echo "Writing the keys failed. Make sure you're in setup mode in your firmware interface. Continue anyways? [y/N]:" 
-        read answer
+        echo "Continue without updating secure boot keys? [y/N]:"
+        read -r answer
 
         if [[ $answer != 'y' && $answer != 'Y' ]]; then
             exit
         fi
+    else
+        SUCCESS=1
+        efi-updatevar -f /etc/efi-keys/DB.auth db && efi-updatevar -f /etc/efi-keys/KEK.auth KEK && efi-updatevar -f /etc/efi-keys/PK.auth PK || SUCCESS=0
+
+        if [[ $SUCCESS != 1 ]]; then
+            echo "Writing the keys failed. Make sure you're in setup mode in your firmware interface. Continue anyways? [y/N]:" 
+            read -r answer
+
+            if [[ $answer != 'y' && $answer != 'Y' ]]; then
+                exit
+            fi
+        fi
     fi
 fi
 
-
 echo "Flashing a new image to the hard disk. This will destroy any existing data on the disk. Continue? [y/N]:"
 
-read answer
+read -r answer
 
 if [[ $answer != 'y' && $answer != 'Y' ]]; then
     exit
@@ -46,7 +54,7 @@ _supported=('gz' 'lz4')
 _hashash=0
 
 _toflash=""
-for f in $_path/*; do
+for f in "$_path"/*; do
     _filename="${f##*/}"
     _extension="${_filename##*.}"
 
@@ -55,13 +63,13 @@ for f in $_path/*; do
         _compression="gzip";
     elif [[ "$_extension" == "lz4" ]]; then
         _compression="lz4";
-    elif [[ "#_extension=sha256sum" ]]; then
+    elif [[ "$_extension" == "sha256sum" ]]; then
         _hashash=0
     fi
     
-    if [ ! -z "$_compression" ]; then
+    if [ -n "$_compression" ]; then
         echo "Found $f, extract it using $_compression and flash? [y/n]"
-        read answer
+        read -r answer
 
         if [[ $answer == 'y' || $answer == 'Y' ]]; then
             _toflash=$_filename
@@ -73,15 +81,11 @@ done
 echo "Extracting and flashing $_toflash"
 
 echo "What is the expected final size of the image? [64g]:"
-read _finalsize
+read -r _finalsize
 
 if [[ -z $_finalsize ]]; then
     _finalsize="64g"
 fi
-
-echo "would have run..."
-echo "$_compression -c -d $_path/$_filename | pv -s $_finalsize > /dev/nvme0n1"
-exit
 
 _toflash=""
 for f in $_path/*; do
