@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# TODO use dmidecode to detect if we're on a Surface Go
+
+# TODO use efi-readvar to detect if our keys are already on this device
+
 echo "Writing new secure boot keys to the device. Proceed? [y/N]:"
 
 read answer
