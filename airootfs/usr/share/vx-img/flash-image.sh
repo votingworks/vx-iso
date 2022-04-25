@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# TODO use dmidecode to detect if we're on a Surface Go
-if sudo dmidecode | grep 'Surface Go'; then
+clear
+# use dmidecode to detect if we're on a Surface Go
+if dmidecode | grep 'Surface Go'; then
     _surface=1
 else
     _surface=0
@@ -9,7 +10,7 @@ fi
 
 
 # TODO use efi-readvar to detect if our keys are already on this device
-_haskeys=0
+_haskeys=1
 
 if [[ $_surface == 0 && $_haskeys == 0 ]]; then
     echo "Writing new secure boot keys to the device. Proceed? [y/N]:"
@@ -46,6 +47,8 @@ if [[ $answer != 'y' && $answer != 'Y' ]]; then
     exit
 fi
 
+clear
+
 echo "Mounting data partition"
 mount /dev/sda3 /mnt
 
@@ -78,16 +81,61 @@ for f in "$_path"/*; do
     fi
 done
 
+if [[ -z $_toflash ]]; then
+    echo "Found no image to flash. Exiting..."
+    exit
+fi
+
 echo "Extracting and flashing $_toflash"
 
-echo "What is the expected final size of the image? [64g]:"
+clear
+echo "What is the expected final size of the image, in GB? [64]:"
 read -r _finalsize
 
 if [[ -z $_finalsize ]]; then
-    _finalsize="64g"
+    _finalsize="64"
 fi
 
-$_compression -c -d $_path/$_filename | pv -s $_finalsize > /dev/nvme0n1
+_disk="/dev/nvme0n1"
+
+# Get our image size in raw bytes
+_size=$(numfmt --from=iec "${_finalsize}G")
+
+clear
+echo "Found the following disks to flash:"
+while true; do
+
+    # Get a list of all available disks large enough to take our image, sorted by size
+    IFS=$'\n' read -r -d '' -a disks <<< "$(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$_size" '$2 > var {print $1}')"
+
+    echo "${disks[@]}"
+    i=1
+    for disk in "${disks[@]}"; do
+        echo "$i. /dev/$disk"
+        ((i+=1))
+    done
+    
+
+    echo "Selecting /dev/${disks[-1]} to flash. Okay? [Y/n]:" 
+    read -r answer
+    if [[ -n $answer && $answer != 'Y' && $answer != 'y' ]]; then
+        echo "Please select the disk to flash:"
+        read -r answer
+
+        selected=${disks[answer-1]}
+
+        if [[ -z $selected ]]; then
+            echo "Invalid selection, starting over"
+            continue
+        fi
+        _disk="/dev/$selected"
+    else
+        _disk="/dev/${disks[-1]}"
+    fi
+    break
+done    
+
+$_compression -c -d $_path/"$_filename" | pv -s "${_finalsize}g" > "$_disk"
 
 if [ $_hashash == 1 ]; then 
     echo "Now checking that the write was successful."
@@ -95,7 +143,7 @@ if [ $_hashash == 1 ]; then
     cat /usr/share/vx-img/image.sha256sum 
 
     echo "Computing hash..."
-    head -c $_finalsize /dev/nvme0n1 | pv -s $_finalsize | sha256sum
+    head -c $_finalsize "$_disk" | pv -s $_finalsize | sha256sum
 fi
 
 $_compression -c -d $_path/$_filename | pv -s $_finalsize > /dev/nvme0n1
@@ -113,7 +161,7 @@ fi
 echo "adding a boot entry for Debian shim"
 efibootmgr \
 	--create \
-	--disk /dev/nvme0n1 \
+	--disk "$_disk" \
 	--part 1 \
 	--label "grub" \
 	--loader "\\EFI\\debian\\shimx64.efi"
@@ -122,7 +170,7 @@ efibootmgr \
 echo "adding a boot entry for VxLinux"
 efibootmgr \
 	--create \
-	--disk /dev/nvme0n1 \
+	--disk "$_disk" \
 	--part 1 \
 	--label "VxLinux" \
 	--loader "\\EFI\\debian\\VxLinux-signed.efi"
