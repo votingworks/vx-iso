@@ -72,6 +72,42 @@ done
 
 echo "Extracting and flashing $_toflash"
 
+if [ $_compression == "gzip" ]; then
+    _finalsize=$($_compression -l | tail -n 1 | sed 's/\s\+[0-9]\+\s\+\([0-9]\+\).*/\1/')
+else
+    echo "lz4 doesn't support storing the uncompressed data size in the compressed file. Please enter the uncompressed size (default is 64g):"
+    read _finalsize
+fi
+
+$_compression -c -d $_path/$_filename | pv -s $_finalsize > /dev/nvme0n1
+
+_toflash=""
+for f in $_path/*; do
+    _filename="${f##*/}"
+    _extension="${_filename##*.}"
+
+    _compression=""
+    if [[ "$_extension" == "gz" ]]; then
+        _compression="gzip";
+    elif [[ "$_extension" == "lz4" ]]; then
+        _compression="lz4";
+    elif [[ "#_extension=sha256sum" ]]; then
+        _hashash=0
+    fi
+    
+    if [ ! -z "$_compression" ]; then
+        echo "Found $f, extract it using $_compression and flash? [y/n]"
+        read answer
+
+        if [[ $answer == 'y' || $answer == 'Y' ]]; then
+            _toflash=$_filename
+            break
+        fi
+    fi
+done
+
+echo "Extracting and flashing $_toflash"
+
 echo "What is the expected final size of the image? [64g]:"
 read _finalsize
 
@@ -86,6 +122,11 @@ if [ $_hashash == 1 ]; then
     echo "The hash should be:"
     cat /usr/share/vx-img/image.sha256sum 
 
+    echo "Computing hash..."
+    head -c $_finalsize /dev/nvme0n1 | pv -s $_finalsize | sha256sum
+fi
+
+if [ $_hashash == 1 ]; then 
     echo "Computing hash..."
     head -c $_finalsize /dev/nvme0n1 | pv -s $_finalsize | sha256sum
 fi
