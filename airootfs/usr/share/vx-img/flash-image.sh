@@ -68,17 +68,14 @@ done
 
 echo "Extracting and flashing $_toflash"
 
-if [[ $_compression == "gzip" ]]; then
-    _finalsize=$($_compression -l | tail -n 1 | sed 's/\s\+[0-9]\+\s\+\([0-9]\+\).*/\1/')
-else
-    echo "lz4 doesn't support storing the uncompressed data size in the compressed file. Please enter the uncompressed size (default is 64g):"
-    read _finalsize
+echo "What is the expected final size of the image? [64g]:"
+read _finalsize
+
+if [[ -z $_finalsize ]]; then
+    _finalsize="64g"
 fi
 
-echo "would have run..."
-echo "$_compression -c -d $_path/$_filename | pv -s $_finalsize > /dev/nvme0n1"
-exit
-
+$_compression -c -d $_path/$_filename | pv -s $_finalsize > /dev/nvme0n1
 
 if [ $_hashash == 1 ]; then 
     echo "Now checking that the write was successful."
