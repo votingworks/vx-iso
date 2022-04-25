@@ -57,6 +57,7 @@ _supported=('gz' 'lz4')
 _hashash=0
 
 _toflash=""
+_images=()
 for f in "$_path"/*; do
     _filename="${f##*/}"
     _extension="${_filename##*.}"
@@ -71,20 +72,26 @@ for f in "$_path"/*; do
     fi
     
     if [ -n "$_compression" ]; then
-        echo "Found $f, extract it using $_compression and flash? [y/n]"
-        read -r answer
-
-        if [[ $answer == 'y' || $answer == 'Y' ]]; then
-            _toflash=$_filename
-            break
-        fi
+        _images+=("$_filename")
     fi
 done
 
-if [[ -z $_toflash ]]; then
+if [[ -z ${_images[0]} ]]; then
     echo "Found no image to flash. Exiting..."
     exit
 fi
+
+echo "Found the following images."
+i=1
+for img in "${_images[@]}"; do
+    echo "$i. $img"
+    ((i+=1))
+done
+
+echo  "Please select one to flash [${_images[-1]}]"
+read -r answer
+
+_toflash=${_images[answer-1]}
 
 echo "Extracting and flashing $_toflash"
 
