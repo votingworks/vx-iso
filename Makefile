@@ -1,3 +1,5 @@
+all: deps build
+
 deps:
 	sudo pacman -S git archiso
 
