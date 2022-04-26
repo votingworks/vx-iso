@@ -2,7 +2,7 @@
 
 clear
 # use dmidecode to detect if we're on a Surface Go
-if dmidecode | grep 'Surface Go'; then
+if dmidecode | grep -q 'Surface Go'; then
     _surface=1
 else
     _surface=0
@@ -49,8 +49,35 @@ fi
 
 clear
 
-echo "Mounting data partition"
-mount /dev/sda3 /mnt
+IFS=$'\n' read -r -d '' -a disks <<< "$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{print $1}')"
+
+while true; do 
+    i=1
+    for disk in "${disks[@]}"; do
+        echo "$i. /dev/$disk"
+        ((i+=1))
+    done
+    echo "Which disk contains the data to flash? [${disks[-1]}]" 
+    read -r answer
+    if [[ -n $answer ]]; then
+        selected=${disks[answer-1]}
+
+        if [[ -z $selected ]]; then
+            echo "Invalid selection, starting over"
+            clear
+            continue
+        fi
+        _datadisk="/dev/$selected"
+    else
+        _datadisk="/dev/${disks[-1]}"
+    fi
+    break
+done
+
+mount "${_datadisk}3" /mnt
+
+clear
+echo "Mounted data disk ${_datadisk} on /mnt"
 
 _path="/mnt"
 _supported=('gz' 'lz4')
