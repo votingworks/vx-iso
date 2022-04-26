@@ -108,19 +108,24 @@ while true; do
     # Get a list of all available disks large enough to take our image, sorted by size
     IFS=$'\n' read -r -d '' -a disks <<< "$(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$_size" '$2 > var {print $1}')"
 
+    if [[ -z ${disks[0]} ]]; then
+        echo "There are no disks big enough for this image! Exiting..."
+        exit
+    fi
+
+    # Get the sizes of all these disks
+    IFS=$'\n' read -r -d '' -a sizes <<< "$(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$_size" '$2 > var {print $2}')"
+
     i=1
     for disk in "${disks[@]}"; do
-        echo "$i. /dev/$disk"
+        echo "$i. /dev/$disk $(numfmt --to=iec "${sizes[$i-1]}")"
         ((i+=1))
     done
     
 
-    echo "Selecting /dev/${disks[-1]} to flash. Okay? [Y/n]:" 
+    echo "Which disk would you like to flash? Default: /dev/${disks[-1]}:" 
     read -r answer
-    if [[ -n $answer && $answer != 'Y' && $answer != 'y' ]]; then
-        echo "Please select the disk to flash:"
-        read -r answer
-
+    if [[ -n $answer ]]; then
         selected=${disks[answer-1]}
 
         if [[ -z $selected ]]; then
@@ -134,6 +139,7 @@ while true; do
     break
 done    
 
+echo "Flashing image $_path/$_filename to disk $_disk"
 $_compression -c -d $_path/"$_filename" | pv -s "${_finalsize}g" > "$_disk"
 
 if [ $_hashash == 1 ]; then 
