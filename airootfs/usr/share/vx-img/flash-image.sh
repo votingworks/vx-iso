@@ -57,33 +57,47 @@ _supported=('gz' 'lz4')
 _hashash=0
 
 _toflash=""
+_images=()
+_extensions=()
 for f in "$_path"/*; do
     _filename="${f##*/}"
     _extension="${_filename##*.}"
 
-    _compression=""
-    if [[ "$_extension" == "gz" ]]; then
-        _compression="gzip";
-    elif [[ "$_extension" == "lz4" ]]; then
-        _compression="lz4";
+    if [[ "$_extension" == "gz" || "$_extension" == "lz4" ]]; then
+        _images+=("$_filename")
+        _extensions+=("$_extension")
     elif [[ "$_extension" == "sha256sum" ]]; then
         _hashash=0
     fi
-    
-    if [ -n "$_compression" ]; then
-        echo "Found $f, extract it using $_compression and flash? [y/n]"
-        read -r answer
-
-        if [[ $answer == 'y' || $answer == 'Y' ]]; then
-            _toflash=$_filename
-            break
-        fi
-    fi
 done
 
-if [[ -z $_toflash ]]; then
+if [[ -z ${_images[0]} ]]; then
     echo "Found no image to flash. Exiting..."
     exit
+fi
+
+echo "Found the following images."
+i=1
+for img in "${_images[@]}"; do
+    echo "$i. $img"
+    ((i+=1))
+done
+
+echo  "Please select one to flash [${_images[-1]}]"
+read -r answer
+
+if [[ -n $answer ]]; then
+    _toflash=${_images[answer-1]}
+    _extension=${_extensions[answer-1]}
+else
+    _toflash=${_images[-1]}
+    _extension=${_extensions[-1]}
+fi
+
+if [[ $_extension == "lz4" ]]; then
+    _compression="lz4"
+elif [[ $_extension == "gz" ]]; then
+    _compression="gzip"
 fi
 
 echo "Extracting and flashing $_toflash"
@@ -149,17 +163,6 @@ if [ $_hashash == 1 ]; then
 
     echo "Computing hash..."
     head -c $_finalsize "$_disk" | pv -s $_finalsize | sha256sum
-fi
-
-$_compression -c -d $_path/$_filename | pv -s $_finalsize > /dev/nvme0n1
-
-if [ $_hashash == 1 ]; then 
-    echo "Now checking that the write was successful."
-    echo "The hash should be:"
-    cat /usr/share/vx-img/image.sha256sum 
-
-    echo "Computing hash..."
-    head -c $_finalsize /dev/nvme0n1 | pv -s $_finalsize | sha256sum
 fi
 
 # TODO make sure this works on every device
