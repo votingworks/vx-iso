@@ -14,3 +14,4 @@ sbsigntools
 edk2-shell
 intel-ucode
 amd-ucode
+dmidecode
