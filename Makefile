@@ -8,5 +8,5 @@ build:
 
 clean:
 	sudo rm -rf /tmp/vxiso-tmp
-	rm -rf out/*
+	sudo rm -rf out/*
 
