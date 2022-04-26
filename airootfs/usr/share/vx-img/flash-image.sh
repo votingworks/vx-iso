@@ -58,21 +58,16 @@ _hashash=0
 
 _toflash=""
 _images=()
+_extensions=()
 for f in "$_path"/*; do
     _filename="${f##*/}"
     _extension="${_filename##*.}"
 
-    _compression=""
-    if [[ "$_extension" == "gz" ]]; then
-        _compression="gzip";
-    elif [[ "$_extension" == "lz4" ]]; then
-        _compression="lz4";
+    if [[ "$_extension" == "gz" || "$_extension" == "lz4" ]]; then
+        _images+=("$_filename")
+        _extensions+=("$_extension")
     elif [[ "$_extension" == "sha256sum" ]]; then
         _hashash=0
-    fi
-    
-    if [ -n "$_compression" ]; then
-        _images+=("$_filename")
     fi
 done
 
@@ -93,8 +88,16 @@ read -r answer
 
 if [[ -n $answer ]]; then
     _toflash=${_images[answer-1]}
+    _extension=${_extensions[answer-1]}
 else
-    _toflash=${_images[answer-1]}
+    _toflash=${_images[-1]}
+    _extension=${_extensions[-1]}
+fi
+
+if [[ $_extension == "lz4" ]]; then
+    _compression="lz4"
+elif [[ $_extension == "gz" ]]; then
+    _compression="gzip"
 fi
 
 echo "Extracting and flashing $_toflash"
