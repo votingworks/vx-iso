@@ -56,7 +56,7 @@ if [[ -z ${disks[0]} ]]; then
     exit
 fi
 
-# Get the sizes of all these disks
+# Get the labels of all these disks
 IFS=$'\n' read -r -d '' -a labels <<< "$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{print $2}')"
 
 i=1
