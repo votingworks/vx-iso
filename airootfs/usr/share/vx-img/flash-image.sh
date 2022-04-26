@@ -153,8 +153,8 @@ while true; do
     break
 done    
 
-echo "Flashing image $_path/$_filename to disk $_disk"
-$_compression -c -d $_path/"$_filename" | pv -s "${_finalsize}g" > "$_disk"
+echo "Flashing image $_path/$_toflash to disk $_disk"
+$_compression -c -d $_path/"$_toflash" | pv -s "${_finalsize}g" > "$_disk"
 
 if [ $_hashash == 1 ]; then 
     echo "Now checking that the write was successful."
