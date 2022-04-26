@@ -87,40 +87,6 @@ if [[ -z $_finalsize ]]; then
     _finalsize="64g"
 fi
 
-_toflash=""
-for f in $_path/*; do
-    _filename="${f##*/}"
-    _extension="${_filename##*.}"
-
-    _compression=""
-    if [[ "$_extension" == "gz" ]]; then
-        _compression="gzip";
-    elif [[ "$_extension" == "lz4" ]]; then
-        _compression="lz4";
-    elif [[ "#_extension=sha256sum" ]]; then
-        _hashash=0
-    fi
-    
-    if [ ! -z "$_compression" ]; then
-        echo "Found $f, extract it using $_compression and flash? [y/n]"
-        read answer
-
-        if [[ $answer == 'y' || $answer == 'Y' ]]; then
-            _toflash=$_filename
-            break
-        fi
-    fi
-done
-
-echo "Extracting and flashing $_toflash"
-
-echo "What is the expected final size of the image? [64g]:"
-read _finalsize
-
-if [[ -z $_finalsize ]]; then
-    _finalsize="64g"
-fi
-
 $_compression -c -d $_path/$_filename | pv -s $_finalsize > /dev/nvme0n1
 
 if [ $_hashash == 1 ]; then 
