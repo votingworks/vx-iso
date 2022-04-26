@@ -51,32 +51,32 @@ clear
 
 IFS=$'\n' read -r -d '' -a disks <<< "$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{print $1}')"
 
-if [[ -z ${disks[0]} ]]; then
-    echo "There are no disks big enough for this image! Exiting..."
-    exit
-fi
-
 # Get the labels of all these disks
 IFS=$'\n' read -r -d '' -a labels <<< "$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{print $2}')"
 
-i=1
-for disk in "${disks[@]}"; do
-    echo "$i. /dev/$disk ${labels[$i-1]}"
-    ((i+=1))
-done
 
-echo "Which disk contains the data to flash? [${disks[-1]}]" 
-read -r answer
-if [[ -n $answer ]]; then
-    selected=${disks[answer-1]}
+while true; do 
+    i=1
+    for disk in "${disks[@]}"; do
+        echo "$i. /dev/$disk ${labels[$i-1]}"
+        ((i+=1))
+    done
+    echo "Which disk contains the data to flash? [${disks[-1]}]" 
+    read -r answer
+    if [[ -n $answer ]]; then
+        selected=${disks[answer-1]}
 
-    if [[ -z $selected ]]; then
-        echo "Invalid selection, starting over"
+        if [[ -z $selected ]]; then
+            echo "Invalid selection, starting over"
+            clear
+            continue
+        fi
+        _datadisk="/dev/$selected"
+    else
+        _datadisk="/dev/${disks[-1]}"
     fi
-    _datadisk="/dev/$selected"
-else
-    _datadisk="/dev/${disks[-1]}"
-fi
+    break
+done
 
 mount "$_datadisk" /mnt
 
