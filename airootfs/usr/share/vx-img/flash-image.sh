@@ -91,7 +91,11 @@ done
 echo  "Please select one to flash [${_images[-1]}]"
 read -r answer
 
-_toflash=${_images[answer-1]}
+if [[ -n $answer ]]; then
+    _toflash=${_images[answer-1]}
+else
+    _toflash=${_images[answer-1]}
+fi
 
 echo "Extracting and flashing $_toflash"
 
@@ -158,7 +162,7 @@ if [ $_hashash == 1 ]; then
     head -c $_finalsize "$_disk" | pv -s $_finalsize | sha256sum
 fi
 
-$_compression -c -d $_path/$_filename | pv -s $_finalsize > /dev/nvme0n1
+$_compression -c -d $_path/"$_filename" | pv -s $_finalsize > /dev/nvme0n1
 
 if [ $_hashash == 1 ]; then 
     echo "Now checking that the write was successful."
