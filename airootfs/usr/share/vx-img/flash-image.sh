@@ -1,5 +1,6 @@
 #!/bin/bash
 
+sleep 1
 clear
 # use dmidecode to detect if we're on a Surface Go
 if dmidecode | grep -q 'Surface Go'; then
