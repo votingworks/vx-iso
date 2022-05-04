@@ -16,4 +16,5 @@ airootfs_image_tool_options=('-zlz4hc,12')
 file_permissions=(
   ["/etc/shadow"]="0:0:400"
   ["/usr/share/vx-img/flash-image.sh"]="root:root:777"
+  ["/usr/share/vx-img/scrape-image.sh"]="root:root:777"
 )

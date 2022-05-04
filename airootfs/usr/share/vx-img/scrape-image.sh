@@ -74,15 +74,12 @@ read -r _filename
 
 _path="/mnt"
 
-echo "Scraping data. This will take a few minutes"
 
 _date=$(date -I'seconds')
 _size=$(lsblk -nlo NAME,TYPE,SIZE | grep "disk" | grep "${_diskname}" | awk '{print $3}')
-
 _fullname="/mnt/${_size}-${_date}-${_filename}"
 
-echo "would write to ${_fullname}.gz"
-exit
+echo "Scraping ${_size} bytes off of ${_disk}, to ${_fullname}.gz. This will take a few minutes"
 
 pv "${_disk}" | gzip -c > "${_fullname}.gz"
 clear
