@@ -49,10 +49,10 @@ unset TERMCAP
 # Man is much better than us at figuring this out
 unset MANPATH
 
-SELENTRY="$(cat /sys/firmware/efi/efivars/LoaderEntrySelected-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f)"
+SELENTRY=$(< /sys/firmware/efi/efivars/LoaderEntrySelected-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f)
 
-if [[ $SELENTRY == 02-archiso-x86_64-ram-linux.conf ]]; then 
+if [[ $SELENTRY == *"02-archiso-x86_64-ram-linux.conf"* ]]; then 
     /usr/share/vx-img/flash-image.sh
-elif [[ $SELENTRY == 03-archiso-x86_64-ram-linux.conf ]]; then 
+elif [[ $SELENTRY == *"03-archiso-x86_64-ram-linux.conf"* ]]; then 
     /usr/share/vx-img/scrape-image.sh
 fi

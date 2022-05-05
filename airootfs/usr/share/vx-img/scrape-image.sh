@@ -40,6 +40,8 @@ while true; do
     break
 done    
 
+clear
+
 while true; do 
     i=1
     for disk in "${disks[@]}"; do
@@ -79,9 +81,15 @@ _date=$(date -I'seconds')
 _size=$(lsblk -nlo NAME,TYPE,SIZE | grep "disk" | grep "${_diskname}" | awk '{print $3}')
 _fullname="/mnt/${_size}-${_date}-${_filename}"
 
+clear
 echo "Scraping ${_size} bytes off of ${_disk}, to ${_fullname}.gz. This will take a few minutes"
 
 pv "${_disk}" | gzip -c > "${_fullname}.gz"
 clear
 echo "Scrape was successful. Now computing a hash for verification purposes."
 pv "${_disk}" | sha256sum -b > "${_fullname}.sha256sum"
+
+clear
+echo "Operation was successful. Shutting down in 5 seconds."
+sleep 5
+poweroff
