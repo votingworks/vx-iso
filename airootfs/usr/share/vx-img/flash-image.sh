@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# This is to evade any race conditions with the display buffer that cuts off
+# text. See votingworks/vx-iso#21.
 sleep 1
 clear
 # use dmidecode to detect if we're on a Surface Go
