@@ -1,7 +1,5 @@
 #!/bin/bash
 
-IFS=$'\n' read -r -d '' -a disks <<< "$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{print $1}')"
-
 _disk="/dev/nvme0n1"
 _diskname=""
 
@@ -10,15 +8,18 @@ echo "Found the following disks to scrape:"
 while true; do
 
     # Get a list of all available disks large enough to take our image, sorted by size
-    IFS=$'\n' read -r -d '' -a disks <<< "$(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk '{print $1}')"
-
-    # Get the sizes of all these disks
-    IFS=$'\n' read -r -d '' -a sizes <<< "$(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk '{print $2}')"
-
+    readarray diskinfo < <(lsblk -x SIZE -nlo NAME,SIZE,TYPE | grep "disk" | awk '{ print $1,$2 }')
+    
+    disks=()
+    sizes=()
     i=1
-    for disk in "${disks[@]}"; do
-        echo "$i. /dev/$disk $(numfmt --to=iec "${sizes[$i-1]}")"
+    for di in "${diskinfo[@]}"; do
+        disk=$(echo "$di" | cut -d ' ' -f 1)
+        size=$(echo "$di" | cut -d ' ' -f 2)
+        echo "$i. /dev/$disk $size"
         ((i+=1))
+        disks+=("$disk")
+        sizes+=("$size")
     done
     
 
@@ -71,6 +72,7 @@ mount "${_datadisk}3" /mnt
 clear
 echo "Mounted data disk ${_datadisk} on /mnt"
 
+
 echo "Please enter a file name, without extension, for the scraped image:"
 read -r _filename
 
@@ -80,9 +82,15 @@ _path="/mnt"
 _date=$(date -I'seconds')
 _size=$(lsblk -nlo NAME,TYPE,SIZE | grep "disk" | grep "${_diskname}" | awk '{print $3}')
 _fullname="/mnt/${_size}-${_date}-${_filename}"
-
+    
 clear
-echo "Scraping ${_size} bytes off of ${_disk}, to ${_fullname}.gz. This will take a few minutes"
+echo "Scraping ${_size} bytes off of ${_disk}, to ${_fullname}.gz. This will take a few minutes. Continue? [Y/n]"
+read -r choice
+
+if [[ $choice != "Y" && $choice != "y" && -n $choice ]]; then
+    echo "Exiting..."
+    exit
+fi
 
 pv "${_disk}" | gzip -c > "${_fullname}.gz"
 clear
@@ -90,6 +98,7 @@ echo "Scrape was successful. Now computing a hash for verification purposes."
 pv "${_disk}" | sha256sum -b > "${_fullname}.sha256sum"
 
 clear
-echo "Operation was successful. Shutting down in 5 seconds."
+echo "Operation was successful. Press any key to shut down in 5 seconds."
+read -r
 sleep 5
 poweroff
