@@ -239,8 +239,9 @@ while true; do
     fixed_disks=()
     for value in "${disks[@]}"; do
         name=$(echo "$value" | cut -d ' ' -f 1)
+        size=$(echo "$value" | cut -d ' ' -f 2 | numfmt --to=iec)
         if [[ "$_datadisk" != *"$name"* ]]; then
-            fixed_disks+=("$value")
+            fixed_disks+=("$name $size")
         fi
     done
 
@@ -252,12 +253,12 @@ while true; do
     unset answer
     menu "${fixed_disks[@]}" "Which disk would you like to flash? Default:" 
 
-    if [[ -n $err ]]; then
+    if [[ $err == 1 ]]; then
         echo "Something went wrong. Please try again."
     fi 
 
     if [[ -n $answer ]]; then
-        selected=${fixed_disks[answer-1]}
+        selected=$(echo "${fixed_disks[answer-1]}" | cut -d ' ' -f 1)
 
         if [[ -z $selected ]]; then
             echo "Invalid selection, starting over"
@@ -265,13 +266,13 @@ while true; do
         fi
         _disk="/dev/$selected"
     else
-        _disk="/dev/${fixed_disks[-1]}"
+        _disk="/dev/$(echo "${fixed_disks[-1]}" | cut -d ' ' -f 1)"
     fi
     break
 done
 
 echo "Flashing image $_path/$_toflash to disk $_disk"
-$_compression -c -d $_path/"$_toflash" | pv -s "${_finalsize}g" > "$_disk"
+$_compression -c -d $_path/"$_toflash" | pv -s "${_finalsize}" > "$_disk"
 
 if [ $_hashash == 1 ]; then 
     echo "Now checking that the write was successful."
@@ -279,7 +280,9 @@ if [ $_hashash == 1 ]; then
     cat /usr/share/vx-img/image.sha256sum 
 
     echo "Computing hash..."
-    head -c $_finalsize "$_disk" | pv -s $_finalsize | sha256sum
+    # The fancy syntax around _finalsize makes the gigabyte indicator lowercase,
+    # so it works correctly with pv. 
+    head -c $_finalsize "$_disk" | pv -s "${_finalsize,,}" | sha256sum
 fi
 
 # TODO make sure this works on every device
