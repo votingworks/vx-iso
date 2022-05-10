@@ -235,20 +235,29 @@ while true; do
     # dump newlines
     disks=("${disks[@]//$'\n'/}")
 
+    # remove the data disk, since we don't want to flash it.
+    fixed_disks=()
+    for value in "${disks[@]}"; do
+        name=$(echo "$value" | cut -d ' ' -f 1)
+        if [[ "$_datadisk" != *"$name"* ]]; then
+            fixed_disks+=("$value")
+        fi
+    done
+
     if [[ -z ${disks[0]} ]]; then
         echo "There are no disks big enough for this image! Exiting..."
         exit
     fi
 
     unset answer
-    menu "${disks[@]}" "Which disk would you like to flash? Default:" 
+    menu "${fixed_disks[@]}" "Which disk would you like to flash? Default:" 
 
     if [[ -n $err ]]; then
         echo "Something went wrong. Please try again."
     fi 
 
     if [[ -n $answer ]]; then
-        selected=${disks[answer-1]}
+        selected=${fixed_disks[answer-1]}
 
         if [[ -z $selected ]]; then
             echo "Invalid selection, starting over"
@@ -256,7 +265,7 @@ while true; do
         fi
         _disk="/dev/$selected"
     else
-        _disk="/dev/${disks[-1]}"
+        _disk="/dev/${fixed_disks[-1]}"
     fi
     break
 done
