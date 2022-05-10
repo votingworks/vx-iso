@@ -79,37 +79,48 @@ fi
 
 clear
 
-readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{ print $1 }')
-# This dumps the newlines at the end of the entries in the lsblk table
-disks=("${disks[@]//$'\n'/}")
+data=$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "Data" | awk '{ print $1 }')
 
-while true; do 
-    unset answer
-    menu "${disks[@]}" "Which disk contains the data to flash?"
-    if [[ $err == 1 ]]; then
-        echo "Something went wrong. Please try again."
-        exit
-    fi
+if [[ -n $data ]]; then
+    _datadisk="$data"
+else 
+    readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{ print $1 }')
+    # This dumps the newlines at the end of the entries in the lsblk table
+    disks=("${disks[@]//$'\n'/}")
 
-    if [[ -n $answer ]]; then
-        selected="${disks[answer-1]}"
-
-        if [[ -z $selected ]]; then
-            echo "Invalid selection, starting over"
-            #clear
-            continue
+    while true; do 
+        unset answer
+        menu "${disks[@]}" "Which disk contains the data to flash?"
+        if [[ $err == 1 ]]; then
+            echo "Something went wrong. Please try again."
+            exit
         fi
-        _datadisk="/dev/$selected"
-    else
-        _datadisk="/dev/${disks[-1]}"
-    fi
-    break
-done
 
-mount "${_datadisk}3" /mnt
+        if [[ -n $answer ]]; then
+            selected="${disks[answer-1]}"
 
-#clear
-echo "Mounted data disk ${_datadisk} on /mnt"
+            if [[ -z $selected ]]; then
+                echo "Invalid selection, starting over"
+                #clear
+                continue
+            fi
+            _datadisk="/dev/$selected"
+        else
+            _datadisk="/dev/${disks[-1]}"
+        fi
+        break
+    done
+
+    mount "${_datadisk}3" /mnt
+fi
+
+
+clear
+if [[ -n $data ]]; then 
+    echo "Found Ventoy Data partition and mounted on /mnt"
+else
+    echo "Mounted data disk ${_datadisk} on /mnt"
+fi
 
 # Expected file naming scheme
 _match="^\d+G-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\+|-)\d{2}:\d{2}-.*\.img\.gz$"
@@ -248,7 +259,7 @@ while true; do
         _disk="/dev/${disks[-1]}"
     fi
     break
-done    
+done
 
 echo "Flashing image $_path/$_toflash to disk $_disk"
 $_compression -c -d $_path/"$_toflash" | pv -s "${_finalsize}g" > "$_disk"
