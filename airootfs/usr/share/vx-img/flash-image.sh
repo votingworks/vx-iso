@@ -112,7 +112,7 @@ mount "${_datadisk}3" /mnt
 echo "Mounted data disk ${_datadisk} on /mnt"
 
 # Expected file naming scheme
-_match="^\d+G-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+\d{2}:\d{2}-.*\.img\.gz$"
+_match="^\d+G-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\+|-)\d{2}:\d{2}-.*\.img\.gz$"
 _sizematch="^\d+G"
 
 
@@ -129,7 +129,6 @@ _matches=()
 for f in "$_path"/*; do
     _filename="${f##*/}"
     _extension="${_filename##*.}"
-    echo "$_filename"
 
     if (echo "$_filename" | grep -Po "$_match") ; then
         _matches+=("$_filename")
@@ -154,7 +153,7 @@ if [[ "${#_matches[@]}" == 1 ]]; then
 elif [[ -n ${_matches[0]} ]]; then
     echo "Found several images that match the expected format."
     unset answer
-    menu _matches "Please select an image to flash" 
+    menu "${_matches[@]}" "Please select an image to flash" 
 
     if [[ $err == 1 ]]; then
         echo "Something went wrong, please try again."
@@ -175,7 +174,7 @@ elif [[ "${#_images[@]}" == 1 ]]; then
 else
     echo "Found the following images that might work."
     unset answer
-    menu _images "Please select an image to flash" 
+    menu "${_images[@]}" "Please select an image to flash" 
 
     if [[ $err == 1 ]]; then
         echo "Something went wrong, please try again."
@@ -231,7 +230,7 @@ while true; do
     fi
 
     unset answer
-    menu disks "Which disk would you like to flash? Default:" 
+    menu "${disks[@]}" "Which disk would you like to flash? Default:" 
 
     if [[ -n $err ]]; then
         echo "Something went wrong. Please try again."
