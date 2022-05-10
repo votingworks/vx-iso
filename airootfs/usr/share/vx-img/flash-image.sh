@@ -1,5 +1,32 @@
 #!/bin/bash
 
+err=0
+function menu() {
+
+    # Due to quirks of how bash passes arrays, all args are one array. The
+    # prompt Argument gets put at the end of the array, so we have to take it
+    # out. 
+    items=("$@")
+    prompt="${items[-1]}"
+
+    unset 'items[-1]'
+
+    if [ ${#items[@]} -eq 0 ]; then
+        err=1
+        return 
+    fi
+
+    i=1
+    for item in "${items[@]}"; do
+        echo "$i. $item"
+        ((i+=1))
+    done
+
+    echo  "$prompt [${items[-1]}]"
+    read -r answer
+    err=0
+}
+
 # This is to evade any race conditions with the display buffer that cuts off
 # text. See votingworks/vx-iso#21.
 sleep 1
@@ -52,22 +79,24 @@ fi
 
 clear
 
-IFS=$'\n' read -r -d '' -a disks <<< "$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{print $1}')"
+readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{ print $1 }')
+# This dumps the newlines at the end of the entries in the lsblk table
+disks=("${disks[@]//$'\n'/}")
 
 while true; do 
-    i=1
-    for disk in "${disks[@]}"; do
-        echo "$i. /dev/$disk"
-        ((i+=1))
-    done
-    echo "Which disk contains the data to flash? [${disks[-1]}]" 
-    read -r answer
+    unset answer
+    menu "${disks[@]}" "Which disk contains the data to flash?"
+    if [[ $err == 1 ]]; then
+        echo "Something went wrong. Please try again."
+        exit
+    fi
+
     if [[ -n $answer ]]; then
-        selected=${disks[answer-1]}
+        selected="${disks[answer-1]}"
 
         if [[ -z $selected ]]; then
             echo "Invalid selection, starting over"
-            clear
+            #clear
             continue
         fi
         _datadisk="/dev/$selected"
@@ -79,8 +108,13 @@ done
 
 mount "${_datadisk}3" /mnt
 
-clear
+#clear
 echo "Mounted data disk ${_datadisk} on /mnt"
+
+# Expected file naming scheme
+_match="^\d+G-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+\d{2}:\d{2}-.*\.img\.gz$"
+_sizematch="^\d+G"
+
 
 _path="/mnt"
 _supported=('gz' 'lz4')
@@ -89,11 +123,17 @@ _hashash=0
 _toflash=""
 _images=()
 _extensions=()
+
+_matches=()
+
 for f in "$_path"/*; do
     _filename="${f##*/}"
     _extension="${_filename##*.}"
+    echo "$_filename"
 
-    if [[ "$_extension" == "gz" || "$_extension" == "lz4" ]]; then
+    if (echo "$_filename" | grep -Po "$_match") ; then
+        _matches+=("$_filename")
+    elif [[ "$_extension" == "gz" || "$_extension" == "lz4" ]]; then
         _images+=("$_filename")
         _extensions+=("$_extension")
     elif [[ "$_extension" == "sha256sum" ]]; then
@@ -101,27 +141,54 @@ for f in "$_path"/*; do
     fi
 done
 
-if [[ -z ${_images[0]} ]]; then
+if [[ -z ${_matches[0]} &&  -z ${_images[0]} ]]; then
     echo "Found no image to flash. Exiting..."
     exit
 fi
 
-echo "Found the following images."
-i=1
-for img in "${_images[@]}"; do
-    echo "$i. $img"
-    ((i+=1))
-done
+if [[ "${#_matches[@]}" == 1 ]]; then
+    echo "Found only one image in the right format."
+    _toflash=${_matches[0]}
+    _extension="gz"
+    _finalsize=$(echo "$_toflash" | grep -oP $_sizematch)
+elif [[ -n ${_matches[0]} ]]; then
+    echo "Found several images that match the expected format."
+    unset answer
+    menu _matches "Please select an image to flash" 
 
-echo  "Please select one to flash [${_images[-1]}]"
-read -r answer
+    if [[ $err == 1 ]]; then
+        echo "Something went wrong, please try again."
+        exit
+    fi
 
-if [[ -n $answer ]]; then
-    _toflash=${_images[answer-1]}
-    _extension=${_extensions[answer-1]}
+    if [[ -n $answer ]]; then
+        _toflash=${_matches[$answer-1]}
+    else
+        _toflash=${_matches[-1]}
+    fi
+    _extension="gz"
+    _finalsize=$(echo "$_toflash" | grep -oP $_sizematch)
+elif [[ "${#_images[@]}" == 1 ]]; then
+    echo "Found only one image that might work."
+    _toflash=${_images[0]}
+    _extension=${_extensions[0]}
 else
-    _toflash=${_images[-1]}
-    _extension=${_extensions[-1]}
+    echo "Found the following images that might work."
+    unset answer
+    menu _images "Please select an image to flash" 
+
+    if [[ $err == 1 ]]; then
+        echo "Something went wrong, please try again."
+        exit
+    fi
+
+    if [[ -n $answer ]]; then
+        _toflash=${_images[$answer-1]}
+        _extension=${_extensions[$answer-1]}
+    else
+        _toflash=${_images[-1]}
+        _extension=${_extensions[-1]}
+    fi
 fi
 
 if [[ $_extension == "lz4" ]]; then
@@ -132,43 +199,44 @@ fi
 
 echo "Extracting and flashing $_toflash"
 
-clear
-echo "What is the expected final size of the image, in GB? [64]:"
-read -r _finalsize
+#clear
 
 if [[ -z $_finalsize ]]; then
-    _finalsize="64"
+    echo "What is the expected final size of the image, in GB? [64]:"
+    read -r answer
+    _finalsize="${answer}G"
+
+    if [[ -z $_finalsize ]]; then
+        _finalsize="64G"
+    fi
 fi
 
 _disk="/dev/nvme0n1"
 
 # Get our image size in raw bytes
-_size=$(numfmt --from=iec "${_finalsize}G")
+_size=$(numfmt --from=iec "${_finalsize}")
 
-clear
+#clear
 echo "Found the following disks to flash:"
 while true; do
 
     # Get a list of all available disks large enough to take our image, sorted by size
-    IFS=$'\n' read -r -d '' -a disks <<< "$(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$_size" '$2 > var {print $1}')"
+    readarray disks < <(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$_size" '$2 > var {print $1,$2}')
+    # dump newlines
+    disks=("${disks[@]//$'\n'/}")
 
     if [[ -z ${disks[0]} ]]; then
         echo "There are no disks big enough for this image! Exiting..."
         exit
     fi
 
-    # Get the sizes of all these disks
-    IFS=$'\n' read -r -d '' -a sizes <<< "$(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$_size" '$2 > var {print $2}')"
+    unset answer
+    menu disks "Which disk would you like to flash? Default:" 
 
-    i=1
-    for disk in "${disks[@]}"; do
-        echo "$i. /dev/$disk $(numfmt --to=iec "${sizes[$i-1]}")"
-        ((i+=1))
-    done
-    
+    if [[ -n $err ]]; then
+        echo "Something went wrong. Please try again."
+    fi 
 
-    echo "Which disk would you like to flash? Default: /dev/${disks[-1]}:" 
-    read -r answer
     if [[ -n $answer ]]; then
         selected=${disks[answer-1]}
 
