@@ -283,9 +283,7 @@ if [ $_hashash == 1 ]; then
     cat /usr/share/vx-img/image.sha256sum 
 
     echo "Computing hash..."
-    # The fancy syntax around _finalsize makes the gigabyte indicator lowercase,
-    # so it works correctly with pv. 
-    head -c $_finalsize "$_disk" | pv -s "${_finalsize,,}" | sha256sum
+    head -c $_finalsize "$_disk" | pv -s "${_finalsize}" | sha256sum
 fi
 
 # TODO make sure this works on every device
