@@ -69,14 +69,6 @@ if [[ $_surface == 0 && $_haskeys == 0 ]]; then
     fi
 fi
 
-echo "Flashing a new image to the hard disk. This will destroy any existing data on the disk. Continue? [y/N]:"
-
-read -r answer
-
-if [[ $answer != 'y' && $answer != 'Y' ]]; then
-    exit
-fi
-
 clear
 
 data=$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "Data" | awk '{ print $1 }')
@@ -274,8 +266,16 @@ while true; do
     break
 done
 
-echo "Flashing image $_path/$_toflash to disk $_disk"
+echo "Flashing image $_path/$_toflash to disk $_disk. Continue? [y/N]"
+
+read -r answer
+
+if [[ $answer != 'y' && $answer != 'Y' ]]; then
+    exit
+fi
+
 $_compression -c -d $_path/"$_toflash" | pv -s "${_finalsize}" > "$_disk"
+
 
 if [ $_hashash == 1 ]; then 
     echo "Now checking that the write was successful."
