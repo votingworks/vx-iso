@@ -226,7 +226,7 @@ _disk="/dev/nvme0n1"
 # Get our image size in raw bytes
 _size=$(numfmt --from=iec "${_finalsize}")
 
-#clear
+clear
 echo "Found the following disks to flash:"
 while true; do
 
@@ -248,25 +248,28 @@ while true; do
     if [[ -z ${disks[0]} ]]; then
         echo "There are no disks big enough for this image! Exiting..."
         exit
-    fi
+    elif [[ "${#fixed_disks[@]}" == 1 ]]; then
+        _disk=$(echo "${fixed_disks[0]}" | cut -d ' ' -f 1)
+    else 
+        unset answer
+        menu "${fixed_disks[@]}" "Which disk would you like to flash? Default:" 
 
-    unset answer
-    menu "${fixed_disks[@]}" "Which disk would you like to flash? Default:" 
-
-    if [[ $err == 1 ]]; then
-        echo "Something went wrong. Please try again."
-    fi 
-
-    if [[ -n $answer ]]; then
-        selected=$(echo "${fixed_disks[answer-1]}" | cut -d ' ' -f 1)
-
-        if [[ -z $selected ]]; then
-            echo "Invalid selection, starting over"
+        if [[ $err == 1 ]]; then
+            echo "Something went wrong. Please try again."
             continue
+        fi 
+
+        if [[ -n $answer ]]; then
+            selected=$(echo "${fixed_disks[answer-1]}" | cut -d ' ' -f 1)
+
+            if [[ -z $selected ]]; then
+                echo "Invalid selection, starting over"
+                continue
+            fi
+            _disk="/dev/$selected"
+        else
+            _disk="/dev/$(echo "${fixed_disks[-1]}" | cut -d ' ' -f 1)"
         fi
-        _disk="/dev/$selected"
-    else
-        _disk="/dev/$(echo "${fixed_disks[-1]}" | cut -d ' ' -f 1)"
     fi
     break
 done
