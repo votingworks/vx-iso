@@ -84,7 +84,7 @@ _size=$(lsblk -nlo NAME,TYPE,SIZE | grep "disk" | grep "${_diskname}" | awk '{pr
 _fullname="/mnt/${_size}-${_date}-${_filename}"
     
 clear
-echo "Scraping ${_size} bytes off of ${_disk}, to ${_fullname}.gz. This will take a few minutes. Continue? [Y/n]"
+echo "Scraping ${_size} bytes off of ${_disk}, to ${_fullname}img.gz. This will take a few minutes. Continue? [Y/n]"
 read -r choice
 
 if [[ $choice != "Y" && $choice != "y" && -n $choice ]]; then
@@ -92,10 +92,10 @@ if [[ $choice != "Y" && $choice != "y" && -n $choice ]]; then
     exit
 fi
 
-pv "${_disk}" | gzip -c > "${_fullname}.gz"
+pv "${_disk}" | gzip -c > "${_fullname}.img.gz"
 clear
 echo "Scrape was successful. Now computing a hash for verification purposes."
-pv "${_disk}" | sha256sum -b > "${_fullname}.sha256sum"
+pv "${_disk}" | sha256sum -b > "${_fullname}.img.sha256sum"
 
 clear
 echo "Operation was successful. Press any key to shut down in 5 seconds."
