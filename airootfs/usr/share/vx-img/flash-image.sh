@@ -22,7 +22,7 @@ function menu() {
         ((i+=1))
     done
 
-    echo  "$prompt [${items[-1]}]"
+    echo  "$prompt Default: [${items[-1]}]"
     read -r answer
     err=0
 }
@@ -81,29 +81,68 @@ else
     disks=("${disks[@]//$'\n'/}")
 
     while true; do 
-        unset answer
-        menu "${disks[@]}" "Which disk contains the data to flash?"
-        if [[ $err == 1 ]]; then
-            echo "Something went wrong. Please try again."
-            exit
+        # If there's only one disk, no need for a menu
+        if [[ ${#disks[@]} == 1 ]]; then
+            _diskname=${disks[0]}
+            _datadisk="/dev/${disks[0]}"
+        else
+            unset answer
+            menu "${disks[@]}" "Which disk contains the data to flash?"
+            if [[ $err == 1 ]]; then
+                echo "Something went wrong. Please try again."
+                exit
+            fi
+
+            if [[ -n $answer ]]; then
+                selected="${disks[answer-1]}"
+
+                if [[ -z $selected ]]; then
+                    echo "Invalid selection, starting over"
+                    sleep 1
+                    clear
+                    continue
+                fi
+                _diskname=$selected
+                _datadisk="/dev/$selected"
+            else
+                _diskname=${disks[-1]}
+                _datadisk="/dev/${disks[-1]}"
+            fi
         fi
 
-        if [[ -n $answer ]]; then
-            selected="${disks[answer-1]}"
+        # Get all the partitions on the selected disk
+        readarray parts < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "part" | grep "$_diskname" | awk '{ print $1 }')
+        parts=("${parts[@]//$'\n'/}")
 
-            if [[ -z $selected ]]; then
-                echo "Invalid selection, starting over"
-                #clear
-                continue
-            fi
-            _datadisk="/dev/$selected"
+        # if there's only one partition, no need for a menu
+        if [[ ${#parts[@]} == 1 ]]; then
+            part=${parts[0]}
         else
-            _datadisk="/dev/${disks[-1]}"
+            unset answer
+            menu "${parts[@]}" "Which partition contains the image?"
+            if [[ $err == 1 ]]; then
+                echo "Something went wrong. Please try again."
+                exit
+            fi
+
+            if [[ -n $answer ]]; then
+                selected="${parts[answer-1]}"
+
+                if [[ -z $selected ]]; then
+                    echo "Invalid selection, starting over"
+                    sleep 1
+                    clear
+                    continue
+                fi
+                part=$selected
+            else
+                part=${parts[-1]}
+            fi
         fi
         break
     done
 
-    mount "${_datadisk}3" /mnt
+    mount "${_datadisk}${part}" /mnt
 fi
 
 
@@ -199,9 +238,7 @@ elif [[ $_extension == "gz" ]]; then
     _compression="gzip"
 fi
 
-echo "Extracting and flashing $_toflash"
-
-#clear
+clear
 
 if [[ -z $_finalsize ]]; then
     echo "What is the expected final size of the image, in GB? [64]:"
@@ -244,7 +281,7 @@ while true; do
         _disk=$(echo "${fixed_disks[0]}" | cut -d ' ' -f 1)
     else 
         unset answer
-        menu "${fixed_disks[@]}" "Which disk would you like to flash? Default:" 
+        menu "${fixed_disks[@]}" "Which disk would you like to flash?" 
 
         if [[ $err == 1 ]]; then
             echo "Something went wrong. Please try again."
