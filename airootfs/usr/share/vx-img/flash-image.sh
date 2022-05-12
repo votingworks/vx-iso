@@ -280,7 +280,7 @@ while true; do
         echo "There are no disks big enough for this image! Exiting..."
         exit
     elif [[ "${#fixed_disks[@]}" == 1 ]]; then
-        _disk=$(echo "${fixed_disks[0]}" | cut -d ' ' -f 1)
+        _disk="/dev/$(echo "${fixed_disks[0]}" | cut -d ' ' -f 1)"
     else 
         unset answer
         menu "${fixed_disks[@]}" "Which disk would you like to flash?" 
