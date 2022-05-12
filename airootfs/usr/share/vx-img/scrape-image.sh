@@ -84,7 +84,7 @@ _size=$(lsblk -nlo NAME,TYPE,SIZE | grep "disk" | grep "${_diskname}" | awk '{pr
 _fullname="/mnt/${_size}-${_date}-${_filename}"
     
 clear
-echo "Scraping ${_size} bytes off of ${_disk}, to ${_fullname}img.gz. This will take a few minutes. Continue? [Y/n]"
+echo "Scraping ${_size} bytes off of ${_disk}, to ${_fullname}.img.gz. This will take a few minutes. Continue? [Y/n]"
 read -r choice
 
 if [[ $choice != "Y" && $choice != "y" && -n $choice ]]; then
