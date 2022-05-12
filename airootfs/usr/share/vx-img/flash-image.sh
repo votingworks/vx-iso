@@ -151,7 +151,7 @@ clear
 if [[ -n $data ]]; then 
     echo "Found Ventoy Data partition ${_datadisk} and mounted on /mnt"
 else
-    echo "Mounted data disk ${_datadisk} on /mnt"
+    echo "Mounted data disk ${_datadisk}${part} on /mnt"
 fi
 
 # Expected file naming scheme
@@ -247,7 +247,7 @@ if [[ -z $_finalsize ]]; then
     read -r answer
     _finalsize="${answer}G"
 
-    if [[ -z $_finalsize ]]; then
+    if [[ -z "$answer" ]]; then
         _finalsize="64G"
     fi
 fi
@@ -280,7 +280,7 @@ while true; do
         echo "There are no disks big enough for this image! Exiting..."
         exit
     elif [[ "${#fixed_disks[@]}" == 1 ]]; then
-        _disk=$(echo "${fixed_disks[0]}" | cut -d ' ' -f 1)
+        _disk="/dev/$(echo "${fixed_disks[0]}" | cut -d ' ' -f 1)"
     else 
         unset answer
         menu "${fixed_disks[@]}" "Which disk would you like to flash?" 
