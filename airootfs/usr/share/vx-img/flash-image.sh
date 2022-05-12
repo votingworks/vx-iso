@@ -75,6 +75,7 @@ data=$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "Data" | awk '{ print $1 
 
 if [[ -n $data ]]; then
     _datadisk="$data"
+    mount "/dev/$_datadisk" /mnt
 else 
     readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{ print $1 }')
     # This dumps the newlines at the end of the entries in the lsblk table
@@ -98,7 +99,7 @@ else
 
                 if [[ -z $selected ]]; then
                     echo "Invalid selection, starting over"
-                    sleep 1
+                    sleep 3
                     clear
                     continue
                 fi
@@ -130,7 +131,7 @@ else
 
                 if [[ -z $selected ]]; then
                     echo "Invalid selection, starting over"
-                    sleep 1
+                    sleep 3
                     clear
                     continue
                 fi
@@ -148,14 +149,14 @@ fi
 
 clear
 if [[ -n $data ]]; then 
-    echo "Found Ventoy Data partition and mounted on /mnt"
+    echo "Found Ventoy Data partition ${_datadisk} and mounted on /mnt"
 else
     echo "Mounted data disk ${_datadisk} on /mnt"
 fi
 
 # Expected file naming scheme
-_match="^\d+G-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\+|-)\d{2}:\d{2}-.*\.img\.gz$"
-_sizematch="^\d+G"
+_match="^\d+(\.\d)*G-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\+|-)\d{2}:\d{2}-.*\.img\.gz$"
+_sizematch="^\d+(\.\d)*G"
 
 
 _path="/mnt"
@@ -172,7 +173,7 @@ for f in "$_path"/*; do
     _filename="${f##*/}"
     _extension="${_filename##*.}"
 
-    if (echo "$_filename" | grep -Po "$_match") ; then
+    if (echo "$_filename" | grep -qPo "$_match") ; then
         _matches+=("$_filename")
     elif [[ "$_extension" == "gz" || "$_extension" == "lz4" ]]; then
         _images+=("$_filename")
@@ -191,7 +192,7 @@ if [[ "${#_matches[@]}" == 1 ]]; then
     echo "Found only one image in the right format."
     _toflash=${_matches[0]}
     _extension="gz"
-    _finalsize=$(echo "$_toflash" | grep -oP $_sizematch)
+    _finalsize=$(echo "$_toflash" | grep -oP "$_sizematch")
 elif [[ -n ${_matches[0]} ]]; then
     echo "Found several images that match the expected format."
     unset answer
@@ -208,7 +209,7 @@ elif [[ -n ${_matches[0]} ]]; then
         _toflash=${_matches[-1]}
     fi
     _extension="gz"
-    _finalsize=$(echo "$_toflash" | grep -oP $_sizematch)
+    _finalsize=$(echo "$_toflash" | grep -oP "$_sizematch")
 elif [[ "${#_images[@]}" == 1 ]]; then
     echo "Found only one image that might work."
     _toflash=${_images[0]}
@@ -238,6 +239,7 @@ elif [[ $_extension == "gz" ]]; then
     _compression="gzip"
 fi
 
+sleep 3
 clear
 
 if [[ -z $_finalsize ]]; then
