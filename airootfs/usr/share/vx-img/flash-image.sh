@@ -247,7 +247,7 @@ if [[ -z $_finalsize ]]; then
     read -r answer
     _finalsize="${answer}G"
 
-    if [[ -z $_finalsize ]]; then
+    if [[ -z "$answer" ]]; then
         _finalsize="64G"
     fi
 fi
