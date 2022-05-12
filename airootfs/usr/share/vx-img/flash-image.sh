@@ -1,5 +1,32 @@
 #!/bin/bash
 
+err=0
+function menu() {
+
+    # Due to quirks of how bash passes arrays, all args are one array. The
+    # prompt Argument gets put at the end of the array, so we have to take it
+    # out. 
+    items=("$@")
+    prompt="${items[-1]}"
+
+    unset 'items[-1]'
+
+    if [ ${#items[@]} -eq 0 ]; then
+        err=1
+        return 
+    fi
+
+    i=1
+    for item in "${items[@]}"; do
+        echo "$i. $item"
+        ((i+=1))
+    done
+
+    echo  "$prompt Default: [${items[-1]}]"
+    read -r answer
+    err=0
+}
+
 # This is to evade any race conditions with the display buffer that cuts off
 # text. See votingworks/vx-iso#21.
 sleep 1
@@ -42,45 +69,94 @@ if [[ $_surface == 0 && $_haskeys == 0 ]]; then
     fi
 fi
 
-echo "Flashing a new image to the hard disk. This will destroy any existing data on the disk. Continue? [y/N]:"
+clear
 
-read -r answer
+data=$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "Data" | awk '{ print $1 }')
 
-if [[ $answer != 'y' && $answer != 'Y' ]]; then
-    exit
+if [[ -n $data ]]; then
+    _datadisk="$data"
+else 
+    readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{ print $1 }')
+    # This dumps the newlines at the end of the entries in the lsblk table
+    disks=("${disks[@]//$'\n'/}")
+
+    while true; do 
+        # If there's only one disk, no need for a menu
+        if [[ ${#disks[@]} == 1 ]]; then
+            _diskname=${disks[0]}
+            _datadisk="/dev/${disks[0]}"
+        else
+            unset answer
+            menu "${disks[@]}" "Which disk contains the data to flash?"
+            if [[ $err == 1 ]]; then
+                echo "Something went wrong. Please try again."
+                exit
+            fi
+
+            if [[ -n $answer ]]; then
+                selected="${disks[answer-1]}"
+
+                if [[ -z $selected ]]; then
+                    echo "Invalid selection, starting over"
+                    sleep 1
+                    clear
+                    continue
+                fi
+                _diskname=$selected
+                _datadisk="/dev/$selected"
+            else
+                _diskname=${disks[-1]}
+                _datadisk="/dev/${disks[-1]}"
+            fi
+        fi
+
+        # Get all the partitions on the selected disk
+        readarray parts < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "part" | grep "$_diskname" | awk '{ print $1 }')
+        parts=("${parts[@]//$'\n'/}")
+
+        # if there's only one partition, no need for a menu
+        if [[ ${#parts[@]} == 1 ]]; then
+            part=${parts[0]}
+        else
+            unset answer
+            menu "${parts[@]}" "Which partition contains the image?"
+            if [[ $err == 1 ]]; then
+                echo "Something went wrong. Please try again."
+                exit
+            fi
+
+            if [[ -n $answer ]]; then
+                selected="${parts[answer-1]}"
+
+                if [[ -z $selected ]]; then
+                    echo "Invalid selection, starting over"
+                    sleep 1
+                    clear
+                    continue
+                fi
+                part=$selected
+            else
+                part=${parts[-1]}
+            fi
+        fi
+        break
+    done
+
+    mount "${_datadisk}${part}" /mnt
 fi
 
-clear
-
-IFS=$'\n' read -r -d '' -a disks <<< "$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{print $1}')"
-
-while true; do 
-    i=1
-    for disk in "${disks[@]}"; do
-        echo "$i. /dev/$disk"
-        ((i+=1))
-    done
-    echo "Which disk contains the data to flash? [${disks[-1]}]" 
-    read -r answer
-    if [[ -n $answer ]]; then
-        selected=${disks[answer-1]}
-
-        if [[ -z $selected ]]; then
-            echo "Invalid selection, starting over"
-            clear
-            continue
-        fi
-        _datadisk="/dev/$selected"
-    else
-        _datadisk="/dev/${disks[-1]}"
-    fi
-    break
-done
-
-mount "${_datadisk}3" /mnt
 
 clear
-echo "Mounted data disk ${_datadisk} on /mnt"
+if [[ -n $data ]]; then 
+    echo "Found Ventoy Data partition and mounted on /mnt"
+else
+    echo "Mounted data disk ${_datadisk} on /mnt"
+fi
+
+# Expected file naming scheme
+_match="^\d+G-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\+|-)\d{2}:\d{2}-.*\.img\.gz$"
+_sizematch="^\d+G"
+
 
 _path="/mnt"
 _supported=('gz' 'lz4')
@@ -89,11 +165,16 @@ _hashash=0
 _toflash=""
 _images=()
 _extensions=()
+
+_matches=()
+
 for f in "$_path"/*; do
     _filename="${f##*/}"
     _extension="${_filename##*.}"
 
-    if [[ "$_extension" == "gz" || "$_extension" == "lz4" ]]; then
+    if (echo "$_filename" | grep -Po "$_match") ; then
+        _matches+=("$_filename")
+    elif [[ "$_extension" == "gz" || "$_extension" == "lz4" ]]; then
         _images+=("$_filename")
         _extensions+=("$_extension")
     elif [[ "$_extension" == "sha256sum" ]]; then
@@ -101,27 +182,54 @@ for f in "$_path"/*; do
     fi
 done
 
-if [[ -z ${_images[0]} ]]; then
+if [[ -z ${_matches[0]} &&  -z ${_images[0]} ]]; then
     echo "Found no image to flash. Exiting..."
     exit
 fi
 
-echo "Found the following images."
-i=1
-for img in "${_images[@]}"; do
-    echo "$i. $img"
-    ((i+=1))
-done
+if [[ "${#_matches[@]}" == 1 ]]; then
+    echo "Found only one image in the right format."
+    _toflash=${_matches[0]}
+    _extension="gz"
+    _finalsize=$(echo "$_toflash" | grep -oP $_sizematch)
+elif [[ -n ${_matches[0]} ]]; then
+    echo "Found several images that match the expected format."
+    unset answer
+    menu "${_matches[@]}" "Please select an image to flash" 
 
-echo  "Please select one to flash [${_images[-1]}]"
-read -r answer
+    if [[ $err == 1 ]]; then
+        echo "Something went wrong, please try again."
+        exit
+    fi
 
-if [[ -n $answer ]]; then
-    _toflash=${_images[answer-1]}
-    _extension=${_extensions[answer-1]}
+    if [[ -n $answer ]]; then
+        _toflash=${_matches[$answer-1]}
+    else
+        _toflash=${_matches[-1]}
+    fi
+    _extension="gz"
+    _finalsize=$(echo "$_toflash" | grep -oP $_sizematch)
+elif [[ "${#_images[@]}" == 1 ]]; then
+    echo "Found only one image that might work."
+    _toflash=${_images[0]}
+    _extension=${_extensions[0]}
 else
-    _toflash=${_images[-1]}
-    _extension=${_extensions[-1]}
+    echo "Found the following images that might work."
+    unset answer
+    menu "${_images[@]}" "Please select an image to flash" 
+
+    if [[ $err == 1 ]]; then
+        echo "Something went wrong, please try again."
+        exit
+    fi
+
+    if [[ -n $answer ]]; then
+        _toflash=${_images[$answer-1]}
+        _extension=${_extensions[$answer-1]}
+    else
+        _toflash=${_images[-1]}
+        _extension=${_extensions[-1]}
+    fi
 fi
 
 if [[ $_extension == "lz4" ]]; then
@@ -130,61 +238,81 @@ elif [[ $_extension == "gz" ]]; then
     _compression="gzip"
 fi
 
-echo "Extracting and flashing $_toflash"
-
 clear
-echo "What is the expected final size of the image, in GB? [64]:"
-read -r _finalsize
 
 if [[ -z $_finalsize ]]; then
-    _finalsize="64"
+    echo "What is the expected final size of the image, in GB? [64]:"
+    read -r answer
+    _finalsize="${answer}G"
+
+    if [[ -z $_finalsize ]]; then
+        _finalsize="64G"
+    fi
 fi
 
 _disk="/dev/nvme0n1"
 
 # Get our image size in raw bytes
-_size=$(numfmt --from=iec "${_finalsize}G")
+_size=$(numfmt --from=iec "${_finalsize}")
 
 clear
 echo "Found the following disks to flash:"
 while true; do
 
     # Get a list of all available disks large enough to take our image, sorted by size
-    IFS=$'\n' read -r -d '' -a disks <<< "$(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$_size" '$2 > var {print $1}')"
+    readarray disks < <(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$_size" '$2 > var {print $1,$2}')
+    # dump newlines
+    disks=("${disks[@]//$'\n'/}")
+
+    # remove the data disk, since we don't want to flash it.
+    fixed_disks=()
+    for value in "${disks[@]}"; do
+        name=$(echo "$value" | cut -d ' ' -f 1)
+        size=$(echo "$value" | cut -d ' ' -f 2 | numfmt --to=iec)
+        if [[ "$_datadisk" != *"$name"* ]]; then
+            fixed_disks+=("$name $size")
+        fi
+    done
 
     if [[ -z ${disks[0]} ]]; then
         echo "There are no disks big enough for this image! Exiting..."
         exit
-    fi
+    elif [[ "${#fixed_disks[@]}" == 1 ]]; then
+        _disk=$(echo "${fixed_disks[0]}" | cut -d ' ' -f 1)
+    else 
+        unset answer
+        menu "${fixed_disks[@]}" "Which disk would you like to flash?" 
 
-    # Get the sizes of all these disks
-    IFS=$'\n' read -r -d '' -a sizes <<< "$(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$_size" '$2 > var {print $2}')"
-
-    i=1
-    for disk in "${disks[@]}"; do
-        echo "$i. /dev/$disk $(numfmt --to=iec "${sizes[$i-1]}")"
-        ((i+=1))
-    done
-    
-
-    echo "Which disk would you like to flash? Default: /dev/${disks[-1]}:" 
-    read -r answer
-    if [[ -n $answer ]]; then
-        selected=${disks[answer-1]}
-
-        if [[ -z $selected ]]; then
-            echo "Invalid selection, starting over"
+        if [[ $err == 1 ]]; then
+            echo "Something went wrong. Please try again."
             continue
+        fi 
+
+        if [[ -n $answer ]]; then
+            selected=$(echo "${fixed_disks[answer-1]}" | cut -d ' ' -f 1)
+
+            if [[ -z $selected ]]; then
+                echo "Invalid selection, starting over"
+                continue
+            fi
+            _disk="/dev/$selected"
+        else
+            _disk="/dev/$(echo "${fixed_disks[-1]}" | cut -d ' ' -f 1)"
         fi
-        _disk="/dev/$selected"
-    else
-        _disk="/dev/${disks[-1]}"
     fi
     break
-done    
+done
 
-echo "Flashing image $_path/$_toflash to disk $_disk"
-$_compression -c -d $_path/"$_toflash" | pv -s "${_finalsize}g" > "$_disk"
+echo "Flashing image $_path/$_toflash to disk $_disk. Continue? [y/N]"
+
+read -r answer
+
+if [[ $answer != 'y' && $answer != 'Y' ]]; then
+    exit
+fi
+
+$_compression -c -d $_path/"$_toflash" | pv -s "${_finalsize}" > "$_disk"
+
 
 if [ $_hashash == 1 ]; then 
     echo "Now checking that the write was successful."
@@ -192,7 +320,7 @@ if [ $_hashash == 1 ]; then
     cat /usr/share/vx-img/image.sha256sum 
 
     echo "Computing hash..."
-    head -c $_finalsize "$_disk" | pv -s $_finalsize | sha256sum
+    head -c $_finalsize "$_disk" | pv -s "${_finalsize}" | sha256sum
 fi
 
 # TODO make sure this works on every device
