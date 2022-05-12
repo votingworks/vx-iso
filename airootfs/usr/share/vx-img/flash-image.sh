@@ -151,7 +151,7 @@ clear
 if [[ -n $data ]]; then 
     echo "Found Ventoy Data partition ${_datadisk} and mounted on /mnt"
 else
-    echo "Mounted data disk ${_datadisk} on /mnt"
+    echo "Mounted data disk ${_datadisk}${part} on /mnt"
 fi
 
 # Expected file naming scheme
