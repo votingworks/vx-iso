@@ -316,7 +316,10 @@ fi
 # If the size of the image is decimal, chop off the decimal point and after so
 # pv doesn't choke on it. This is fine, since pv is only using the size to
 # compute status percentages and will still push the whole file to the disk.
-statussize=$(echo "$_finalsize" | cut -d '.' -f 1)
+statussize="$(echo "$_finalsize" | cut -d '.' -f 1)"
+if ! (echo "$statussize" | grep -qo "G"); then
+    statussize="${statussize}G"
+fi 
 $_compression -c -d $_path/"$_toflash" | pv -s "${statussize}" > "$_disk"
 
 sleep 3
