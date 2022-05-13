@@ -143,7 +143,7 @@ else
         break
     done
 
-    mount "${_datadisk}${part}" /mnt
+    mount "/dev/${part}" /mnt
 fi
 
 
