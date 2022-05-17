@@ -277,7 +277,7 @@ echo "Found the following disks to flash:"
 while true; do
 
     # Get a list of all available disks large enough to take our image, sorted by size
-    readarray disks < <(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$_size" '$2 > var {print $1,$2}')
+    readarray disks < <(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$_size" '$2 >= var {print $1,$2}')
     # dump newlines
     disks=("${disks[@]//$'\n'/}")
 
