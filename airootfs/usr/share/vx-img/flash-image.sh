@@ -347,8 +347,11 @@ if [ $_hashash == 1 ]; then
     head -c $_finalsize "$_disk" | pv -s "${statussize}" | sha256sum
 fi
 
+umount /mnt
 # Now that we've flashed the image, but /vx/config back if it exists.
 if [ -e "vx-config.tar.gz" ]; then
+    echo "Copying /vx/config. Press any key to continue"
+    read -r 
     vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
 
     if [[ -n $vg ]]; then
@@ -360,6 +363,9 @@ if [ -e "vx-config.tar.gz" ]; then
         fi
 
         umount /mnt
+
+        echo "copied successfully. Press any key to continue"
+        read -r
     fi
 fi
 
