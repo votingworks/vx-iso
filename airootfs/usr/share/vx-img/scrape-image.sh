@@ -79,7 +79,7 @@ read -r _filename
 _path="/mnt"
 
 
-_date=$(date -I'seconds')
+_date=$(date -I'seconds' | sed -s 's/:/_/g')
 _size=$(lsblk -nlo NAME,TYPE,SIZE | grep "disk" | grep "${_diskname}" | awk '{print $3}')
 _fullname="/mnt/${_size}-${_date}-${_filename}"
     
