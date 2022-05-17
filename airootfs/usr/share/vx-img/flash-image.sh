@@ -71,6 +71,21 @@ fi
 
 clear
 
+# Detect if this disk already has VotingWorks data on it and copy the machine config
+vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
+
+if [[ -n $vg ]]; then
+    dir=$(find "/dev/$vg" -name "var")
+    mount "$dir" /mnt
+
+    if [ -d "/mnt/vx/config" ]; then
+        tar -czvf vx-config.tar.gz /mnt/vx/config
+    fi
+
+    umount /mnt
+fi
+clear
+
 data=$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "Data" | awk '{ print $1 }')
 
 if [[ -n $data ]]; then
@@ -330,6 +345,22 @@ if [ $_hashash == 1 ]; then
 
     echo "Computing hash..."
     head -c $_finalsize "$_disk" | pv -s "${statussize}" | sha256sum
+fi
+
+# Now that we've flashed the image, but /vx/config back if it exists.
+if [ -e "vx-config.tar.gz" ]; then
+    vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
+
+    if [[ -n $vg ]]; then
+        dir=$(find "/dev/$vg" -name "var")
+        mount "$dir" /mnt
+
+        if [ -d "/mnt/vx/config" ]; then
+            tar -xzvf vx-config.tar.gz /mnt/vx/config
+        fi
+
+        umount /mnt
+    fi
 fi
 
 # TODO make sure this works on every device
