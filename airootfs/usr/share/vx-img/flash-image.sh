@@ -155,7 +155,7 @@ else
 fi
 
 # Expected file naming scheme
-_match="^\d+(\.\d)*G-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\+|-)\d{2}:\d{2}-.*\.img\.gz$"
+_match="^\d+(\.\d)*G-\d{4}-\d{2}-\d{2}T\d{2}(:|_|\s)\d{2}(:|_|\s)\d{2}(\+|-)\d{2}(:|_|\s)\d{2}-.*\.img\.gz$"
 _sizematch="^\d+(\.\d)*G"
 
 
