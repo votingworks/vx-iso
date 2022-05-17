@@ -339,7 +339,8 @@ efibootmgr \
 	--disk "$_disk" \
 	--part 1 \
 	--label "grub" \
-	--loader "\\EFI\\debian\\shimx64.efi"
+	--loader "\\EFI\\debian\\shimx64.efi" \
+    --quiet
 
 
 echo "adding a boot entry for VxLinux"
@@ -348,4 +349,11 @@ efibootmgr \
 	--disk "$_disk" \
 	--part 1 \
 	--label "VxLinux" \
-	--loader "\\EFI\\debian\\VxLinux-signed.efi"
+	--loader "\\EFI\\debian\\VxLinux-signed.efi" \
+    --quiet
+
+clear
+echo "The flash was successful! Press any key to reboot in 5 seconds."
+read -r 
+sleep 5
+reboot
