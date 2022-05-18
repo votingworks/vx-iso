@@ -22,6 +22,7 @@ Ventoy is an open-source tool for creating bootable USB stick that can boot mult
 2. After installation, plug in a fresh USB stick and run Ventoy. **Make sure to run Ventoy as root**, so `sudo VentoyGUI.x86_64`. If running Ventoy as root doesn't work for you, you can also run it as a webserver and use the browser as the GUI: `sudo VentoyWeb.sh` and navigate to `http://localhost:24680`.
 3. Make sure the correct device is found by Ventoy.
 ![image](https://user-images.githubusercontent.com/2686765/158470254-209d9139-f0f9-4939-a6ea-72942538b1de.png)
+3. Select Option -> Partition Style -> GPT 
 3. Make sure "Secure Boot Support is selected ![image](https://user-images.githubusercontent.com/2686765/158470519-a75f2e22-88fa-4e62-8296-30ea22a98953.png)
 4. To create a Data partition, select "Partition Configuration": ![image](https://user-images.githubusercontent.com/2686765/158470639-89b97f27-aef1-422b-a2fb-5fe8bddeca63.png)
 5. In the dialog, select "preserve some space at the end of the disk", and type in a number of bytes. I recommend doing 6GB less than the total space on your USB drive, assuming you have at like 16GB total. In this case I am doing 10GB on a 16GB USB drive.  ![image](https://user-images.githubusercontent.com/2686765/158470805-cf0158d6-d60c-41e4-b752-e5723cbe3525.png)
