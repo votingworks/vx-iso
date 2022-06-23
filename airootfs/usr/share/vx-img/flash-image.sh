@@ -40,20 +40,16 @@ fi
 
 _haskeys=0
 if mokutil --pk > /dev/null; then
-    echo "Found PK"
     # Make sure the SB keys are ours
     # TODO do something fancier once we've decided on our keys
     _pk=$(mokutil --pk | grep -aq "VotingWorks" && echo 1 || echo 0)
     _kek=$(mokutil --kek | grep -aq "VotingWorks" && echo 1 || echo 0)
     _db=$(mokutil --db | grep -aq "VotingWorks" && echo 1 || echo 0)
 
-    echo "$_pk $_kek $_db"
     if [[ $_pk == 1 && $_kek == 1 && $_db == 1 ]]; then
         _haskeys=1
     fi
 fi
-
-echo $_haskeys
 
 if [[ $_surface == 0  && $_haskeys == 0 ]]; then
     echo "Writing new secure boot keys to the device. Proceed? [y/N]:"
