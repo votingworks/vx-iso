@@ -74,7 +74,7 @@ if [[ $_surface == 0  && $_haskeys == 0 ]]; then
                 read -r answer
 
                 if [[ $answer != 'n' && $answer != 'N' ]]; then
-                    reboot 
+                    systemctl reboot --firmware-setup
                 else
                     exit
                 fi
