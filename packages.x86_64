@@ -16,3 +16,4 @@ intel-ucode
 amd-ucode
 dmidecode
 terminus-font
+mokutil

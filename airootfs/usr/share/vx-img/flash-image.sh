@@ -38,11 +38,20 @@ else
     _surface=0
 fi
 
+_haskeys=0
+if mokutil --pk > /dev/null; then
+    # Make sure the SB keys are ours
+    # TODO do something fancier once we've decided on our keys
+    _pk=$(mokutil --pk | grep -aq "VotingWorks" && echo 1 || echo 0)
+    _kek=$(mokutil --kek | grep -aq "VotingWorks" && echo 1 || echo 0)
+    _db=$(mokutil --db | grep -aq "VotingWorks" && echo 1 || echo 0)
 
-# TODO use efi-readvar to detect if our keys are already on this device
-_haskeys=1
+    if [[ $_pk == 1 && $_kek == 1 && $_db == 1 ]]; then
+        _haskeys=1
+    fi
+fi
 
-if [[ $_surface == 0 && $_haskeys == 0 ]]; then
+if [[ $_surface == 0  && $_haskeys == 0 ]]; then
     echo "Writing new secure boot keys to the device. Proceed? [y/N]:"
 
     read -r answer
@@ -55,6 +64,22 @@ if [[ $_surface == 0 && $_haskeys == 0 ]]; then
             exit
         fi
     else
+        if [[ $_surface == 0 ]]; then
+            _setup=$(mokutil --sb-state | grep -q "Setup Mode")
+
+            if [[ -z $setup ]]; then
+                echo "Device is not in Setup Mode."
+                echo "Please reboot into the BIOS and enter Setup Mode before continuing."
+                echo "Reboot now? [Y/n]:"
+                read -r answer
+
+                if [[ $answer != 'n' && $answer != 'N' ]]; then
+                    systemctl reboot --firmware-setup
+                else
+                    exit
+                fi
+            fi
+        fi
         SUCCESS=1
         efi-updatevar -f /etc/efi-keys/DB.auth db && efi-updatevar -f /etc/efi-keys/KEK.auth KEK && efi-updatevar -f /etc/efi-keys/PK.auth PK || SUCCESS=0
 
