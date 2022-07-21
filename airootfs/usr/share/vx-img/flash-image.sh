@@ -51,6 +51,9 @@ if mokutil --pk > /dev/null; then
         _haskeys=1
     fi
 fi
+readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{ print $1 }')
+# This dumps the newlines at the end of the entries in the lsblk table
+disks=("${disks[@]//$'\n'/}")
 
 if [[ $_surface == 0  && $_haskeys == 0 ]]; then
     echo "Writing new secure boot keys to the device. Proceed? [y/N]:"
@@ -83,17 +86,13 @@ if [[ $_surface == 0  && $_haskeys == 0 ]]; then
         fi
         SUCCESS=1
 
-        # We have to make sure we can write the keys. There's no PK or KEK
-        # 'cause we're in setup mode
-        chattr -i /sys/firmware/efi/efivars/db* 
+        # We have to make sure we can write the keys. 
+        chattr -i /sys/firmware/efi/efivars/db* || chattr -i /sys/firmware/efi/efivars/KEK* || chattr -i /sys/firmware/efi/efivars/PK*
 
-        readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{ print $1 }')
-        # This dumps the newlines at the end of the entries in the lsblk table
-        disks=("${disks[@]//$'\n'/}")
         while true; do 
 
-            # Get all the partitions on the selected disk
-            readarray parts < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "part" | grep "$_disk" | awk '{ print $1 }')
+            # Get all the partitions # TODO make this better 
+            readarray parts < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "part" | awk '{ print $1 }')
             parts=("${parts[@]//$'\n'/}")
 
             # if there's only one partition, no need for a menu
@@ -153,6 +152,7 @@ if [[ -n $data ]]; then
     _datadisk="$data"
     mount "/dev/$_datadisk" /mnt
 
+else 
     readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{ print $1 }')
     # This dumps the newlines at the end of the entries in the lsblk table
     disks=("${disks[@]//$'\n'/}")
