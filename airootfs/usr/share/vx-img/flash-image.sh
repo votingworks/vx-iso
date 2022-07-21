@@ -12,6 +12,7 @@ function menu() {
     unset 'items[-1]'
 
     if [ ${#items[@]} -eq 0 ]; then
+        echo "Got an empty list!"
         err=1
         return 
     fi
@@ -82,26 +83,14 @@ if [[ $_surface == 0  && $_haskeys == 0 ]]; then
         fi
         SUCCESS=1
 
-        # We have to make sure we can write the keys. There's no PK 'cause we're
-        # in setup mode
-        chattr -i /sys/firmware/efi/efivars/db* && chattr -i /sys/firmware/efivars/KEK*
+        # We have to make sure we can write the keys. There's no PK or KEK
+        # 'cause we're in setup mode
+        chattr -i /sys/firmware/efi/efivars/db* 
 
-        while True; do
-            unset answer
-            menu "${fixed_disks[@]}" "Which disk contains the keys?" 
-
-
-            if [[ -n $answer ]]; then
-                selected=$(echo "${fixed_disks[answer-1]}" | cut -d ' ' -f 1)
-
-                if [[ -z $selected ]]; then
-                    echo "Invalid selection, starting over"
-                    continue
-                fi
-                _disk="/dev/$selected"
-            else
-                _disk="/dev/$(echo "${fixed_disks[-1]}" | cut -d ' ' -f 1)"
-            fi
+        readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{ print $1 }')
+        # This dumps the newlines at the end of the entries in the lsblk table
+        disks=("${disks[@]//$'\n'/}")
+        while true; do 
 
             # Get all the partitions on the selected disk
             readarray parts < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "part" | grep "$_disk" | awk '{ print $1 }')
@@ -112,7 +101,7 @@ if [[ $_surface == 0  && $_haskeys == 0 ]]; then
                 part=${parts[0]}
             else
                 unset answer
-                menu "${parts[@]}" "Which partition contains the image?"
+                menu "${parts[@]}" "Which partition contains the keys to flash?"
                 if [[ $err == 1 ]]; then
                     echo "Something went wrong. Please try again."
                     exit
@@ -135,7 +124,7 @@ if [[ $_surface == 0  && $_haskeys == 0 ]]; then
             break
         done
 
-        mkdir keys
+        mkdir -p keys
         mount "/dev/${part}" keys
 
 
