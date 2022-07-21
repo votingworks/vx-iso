@@ -65,9 +65,9 @@ if [[ $_surface == 0  && $_haskeys == 0 ]]; then
         fi
     else
         if [[ $_surface == 0 ]]; then
-            _setup=$(mokutil --sb-state | grep -q "Setup Mode")
+            _setup=$(mokutil --sb-state | grep "Setup Mode")
 
-            if [[ -z $setup ]]; then
+            if [[ -z $_setup ]]; then
                 echo "Device is not in Setup Mode."
                 echo "Please reboot into the BIOS and enter Setup Mode before continuing."
                 echo "Reboot now? [Y/n]:"
@@ -81,7 +81,67 @@ if [[ $_surface == 0  && $_haskeys == 0 ]]; then
             fi
         fi
         SUCCESS=1
-        efi-updatevar -f /etc/efi-keys/DB.auth db && efi-updatevar -f /etc/efi-keys/KEK.auth KEK && efi-updatevar -f /etc/efi-keys/PK.auth PK || SUCCESS=0
+
+        # We have to make sure we can write the keys. There's no PK 'cause we're
+        # in setup mode
+        chattr -i /sys/firmware/efi/efivars/db* && chattr -i /sys/firmware/efivars/KEK*
+
+        while True; do
+            unset answer
+            menu "${fixed_disks[@]}" "Which disk contains the keys?" 
+
+
+            if [[ -n $answer ]]; then
+                selected=$(echo "${fixed_disks[answer-1]}" | cut -d ' ' -f 1)
+
+                if [[ -z $selected ]]; then
+                    echo "Invalid selection, starting over"
+                    continue
+                fi
+                _disk="/dev/$selected"
+            else
+                _disk="/dev/$(echo "${fixed_disks[-1]}" | cut -d ' ' -f 1)"
+            fi
+
+            # Get all the partitions on the selected disk
+            readarray parts < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "part" | grep "$_disk" | awk '{ print $1 }')
+            parts=("${parts[@]//$'\n'/}")
+
+            # if there's only one partition, no need for a menu
+            if [[ ${#parts[@]} == 1 ]]; then
+                part=${parts[0]}
+            else
+                unset answer
+                menu "${parts[@]}" "Which partition contains the image?"
+                if [[ $err == 1 ]]; then
+                    echo "Something went wrong. Please try again."
+                    exit
+                fi
+
+                if [[ -n $answer ]]; then
+                    selected="${parts[answer-1]}"
+
+                    if [[ -z $selected ]]; then
+                        echo "Invalid selection, starting over"
+                        sleep 3
+                        clear
+                        continue
+                    fi
+                    part=$selected
+                else
+                    part=${parts[-1]}
+                fi
+            fi
+            break
+        done
+
+        mkdir keys
+        mount "/dev/${part}" keys
+
+
+        efi-updatevar -f keys/DB.auth db && efi-updatevar -f keys/KEK.auth KEK && efi-updatevar -f keys/PK.auth PK || SUCCESS=0
+
+        umount keys
 
         if [[ $SUCCESS != 1 ]]; then
             echo "Writing the keys failed. Make sure you're in setup mode in your firmware interface. Continue anyways? [y/N]:" 
@@ -90,6 +150,8 @@ if [[ $_surface == 0  && $_haskeys == 0 ]]; then
             if [[ $answer != 'y' && $answer != 'Y' ]]; then
                 exit
             fi
+        else
+            echo "Writing keys succeeded!"
         fi
     fi
 fi
@@ -101,7 +163,7 @@ data=$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "Data" | awk '{ print $1 
 if [[ -n $data ]]; then
     _datadisk="$data"
     mount "/dev/$_datadisk" /mnt
-else 
+
     readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{ print $1 }')
     # This dumps the newlines at the end of the entries in the lsblk table
     disks=("${disks[@]//$'\n'/}")
