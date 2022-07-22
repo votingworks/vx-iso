@@ -136,96 +136,121 @@ function part_select() {
 # text. See votingworks/vx-iso#21.
 sleep 1
 clear
-# use dmidecode to detect if we're on a Surface Go
-if dmidecode | grep -q 'Surface Go'; then
-    _surface=1
-else
-    _surface=0
-fi
 
-_haskeys=0
-if mokutil --pk > /dev/null; then
-    # Make sure the SB keys are ours
-    # TODO do something fancier once we've decided on our keys
-    _pk=$(mokutil --pk | grep -aq "VotingWorks" && echo 1 || echo 0)
-    _kek=$(mokutil --kek | grep -aq "VotingWorks" && echo 1 || echo 0)
-    _db=$(mokutil --db | grep -aq "VotingWorks" && echo 1 || echo 0)
-
-    if [[ $_pk == 1 && $_kek == 1 && $_db == 1 ]]; then
-        _haskeys=1
+function flash_keys() {
+    # use dmidecode to detect if we're on a Surface Go
+    if dmidecode | grep -q 'Surface Go'; then
+        _surface=1
+    else
+        _surface=0
     fi
-fi
 
-if [[ $_surface == 0  && $_haskeys == 0 ]]; then
-    echo "Writing new secure boot keys to the device. Proceed? [y/N]:"
+    _haskeys=0
+    if mokutil --pk > /dev/null; then
+        # Make sure the SB keys are ours
+        # TODO do something fancier once we've decided on our keys
+        _pk=$(mokutil --pk | grep -aq "VotingWorks" && echo 1 || echo 0)
+        _kek=$(mokutil --kek | grep -aq "VotingWorks" && echo 1 || echo 0)
+        _db=$(mokutil --db | grep -aq "VotingWorks" && echo 1 || echo 0)
 
-    read -r answer
+        if [[ $_pk == 1 && $_kek == 1 && $_db == 1 ]]; then
+            _haskeys=1
+        fi
+    fi
 
-    if [[ $answer != 'y' && $answer != 'Y' ]]; then
-        echo "Continue without updating secure boot keys? [y/N]:"
+    if [[ $_surface == 0  && $_haskeys == 0 ]]; then
+        echo "Writing new secure boot keys to the device. Proceed? [y/N]:"
+
         read -r answer
 
         if [[ $answer != 'y' && $answer != 'Y' ]]; then
-            exit
-        fi
-    else
-        if [[ $_surface == 0 ]]; then
-            _setup=$(mokutil --sb-state | grep "Setup Mode")
+            echo "Continue without updating secure boot keys? [y/N]:"
+            read -r answer
 
-            if [[ -z $_setup ]]; then
-                echo "Device is not in Setup Mode."
-                echo "Please reboot into the BIOS and enter Setup Mode before continuing."
-                echo "Reboot now? [Y/n]:"
-                read -r answer
-
-                if [[ $answer != 'n' && $answer != 'N' ]]; then
-                    systemctl reboot --firmware-setup
-                else
-                    exit
-                fi
+            if [[ $answer != 'y' && $answer != 'Y' ]]; then
+                exit
             fi
-        fi
-        SUCCESS=1
-
-        # We have to make sure we can write the keys. 
-        chattr -i /sys/firmware/efi/efivars/db* || chattr -i /sys/firmware/efi/efivars/KEK* || chattr -i /sys/firmware/efi/efivars/PK*
-
-        disk_select "Which disk contains the keys to flash?"
-        
-        if [[ $err == 1 ]]; then
-            echo "Could not select a disk with keys. Not flashing keys."
         else
-            part_select "$_diskname" "Which partition contains the keys?" 
+            if [[ $_surface == 0 ]]; then
+                _setup=$(mokutil --sb-state | grep "Setup Mode")
 
-            if [[ $err == 1 ]]; then
-                echo "Could not select a partition with keys. Not flashing keys."
-            else
-                mkdir -p keys
-                mount "/dev/${part}" keys
-
-
-                efi-updatevar -f keys/DB.auth db && efi-updatevar -f keys/KEK.auth KEK && efi-updatevar -f keys/PK.auth PK || SUCCESS=0
-
-                umount keys
-
-                if [[ $SUCCESS != 1 ]]; then
-                    echo "Writing the keys failed. Make sure you're in setup mode in your firmware interface. Continue anyways? [y/N]:" 
+                if [[ -z $_setup ]]; then
+                    echo "Device is not in Setup Mode."
+                    echo "Please reboot into the BIOS and enter Setup Mode before continuing."
+                    echo "Reboot now? [Y/n]:"
                     read -r answer
 
-                    if [[ $answer != 'y' && $answer != 'Y' ]]; then
-                        exit
+                    if [[ $answer != 'n' && $answer != 'N' ]]; then
+                        systemctl reboot --firmware-setup
+                    else
+                        echo "Continue without flashing keys?" 
+                        read -r answer
+
+                        if [[ $answer != 'n' && $answer != 'N' ]]; then
+                            return
+                        else
+                            echo "Please put the machine in Setup Mode before trying again."
+                            exit
+                        fi
                     fi
-                else
-                    echo "Writing keys succeeded!"
                 fi
+            fi
+            SUCCESS=1
+
+            # We have to make sure we can write the keys. 
+            # shellcheck disable=SC2210 
+            chattr -i /sys/firmware/efi/efivars/db* 2&>1 /dev/null  
+            # shellcheck disable=SC2210 
+            chattr -i /sys/firmware/efi/efivars/KEK* 2&>1 /dev/null 
+            # shellcheck disable=SC2210 
+            chattr -i /sys/firmware/efi/efivars/PK* 2&>1 /dev/null 
+
+            keys=$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep -iF "Keys" | awk '{ print $1 }')
+
+            if [[ -z $keys ]]; then
+                disk_select "Which disk contains the keys to flash?"
+                
+                if [[ $err == 1 ]]; then
+                    echo "Could not select a disk with keys. Not flashing keys."
+                    return
+                else
+                    part_select "$_diskname" "Which partition contains the keys?" 
+
+                    if [[ $err == 1 ]]; then
+                        echo "Could not select a partition with keys. Not flashing keys."
+                        return
+                    fi
+
+                    keys="${part}"
+                fi
+            fi
+            mkdir -p keys
+            mount "/dev/${keys}" keys
+
+
+            efi-updatevar -f keys/DB.auth db && efi-updatevar -f keys/KEK.auth KEK && efi-updatevar -f keys/PK.auth PK || SUCCESS=0
+
+            umount keys
+
+            if [[ $SUCCESS != 1 ]]; then
+                echo "Writing the keys failed. Make sure you're in setup mode in your firmware interface. Continue anyways? [y/N]:" 
+                read -r answer
+
+                if [[ $answer != 'y' && $answer != 'Y' ]]; then
+                    exit
+                fi
+            else
+                echo "Writing keys succeeded!"
             fi
         fi
     fi
-fi
+}
+
+flash_keys
 
 clear
 
-data=$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "Data" | awk '{ print $1 }')
+data=$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep -iF "Data" | awk '{ print $1 }')
 
 if [[ -n $data ]]; then
     _datadisk="$data"
@@ -255,7 +280,7 @@ else
 fi
 
 # Expected file naming scheme
-_match="^\d+(\.\d)*G-\d{4}-\d{2}-\d{2}T\d{2}(:|_|\s)\d{2}(:|_|\s)\d{2}(\+|-)\d{2}(:|_|\s)\d{2}-.*\.img\.gz$"
+_match="^\d+(\.\d)*G-\d{4}-\d{2}-\d{2}T\d{2}(:|_|\s)\d{2}(:|_|\s)\d{2}(\+|-)\d{2}(:|_|\s)\d{2}-.*\.img\.(gz|lz4)$"
 _sizematch="^\d+(\.\d)*G"
 
 
