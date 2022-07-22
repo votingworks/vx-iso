@@ -274,7 +274,7 @@ fi
 
 clear
 if [[ -n $data ]]; then 
-    echo "Found Ventoy Data partition ${_datadisk} and mounted on /mnt"
+    echo "Found data partition ${_datadisk} and mounted on /mnt"
 else
     echo "Mounted data disk ${part} on /mnt"
 fi
