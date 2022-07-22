@@ -293,6 +293,7 @@ _images=()
 _extensions=()
 
 _matches=()
+_matchextensions=()
 
 for f in "$_path"/*; do
     _filename="${f##*/}"
@@ -300,6 +301,7 @@ for f in "$_path"/*; do
 
     if (echo "$_filename" | grep -qPo "$_match") ; then
         _matches+=("$_filename")
+        _matchextensions+=("$_extension")
     elif [[ "$_extension" == "gz" || "$_extension" == "lz4" ]]; then
         _images+=("$_filename")
         _extensions+=("$_extension")
@@ -316,7 +318,7 @@ fi
 if [[ "${#_matches[@]}" == 1 ]]; then
     echo "Found only one image in the right format."
     _toflash=${_matches[0]}
-    _extension="gz"
+    _extension=${_matchextensions[0]}
     _finalsize=$(echo "$_toflash" | grep -oP "$_sizematch")
 elif [[ -n ${_matches[0]} ]]; then
     echo "Found several images that match the expected format."
@@ -333,7 +335,7 @@ elif [[ -n ${_matches[0]} ]]; then
     else
         _toflash=${_matches[-1]}
     fi
-    _extension="gz"
+    _extension=${_matchextensions[0]}
     _finalsize=$(echo "$_toflash" | grep -oP "$_sizematch")
 elif [[ "${#_images[@]}" == 1 ]]; then
     echo "Found only one image that might work."
