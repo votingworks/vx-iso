@@ -33,42 +33,21 @@ function disk_select() {
     unset _datadisk
 
     prompt=$1
-    size=$2
-
-    if [[ -n $size ]]; then
-        readarray disks < <(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$_size" '$2 > var {print $1,$2}')
-        # This dumps the newlines at the end of the entries in the lsblk table
-        disks=("${disks[@]//$'\n'/}")
-        fixed_disks=()
-        for value in "${disks[@]}"; do
-            name=$(echo "$value" | cut -d ' ' -f 1)
-            size=$(echo "$value" | cut -d ' ' -f 2 | numfmt --to=iec)
-            if [[ "$_datadisk" != *"$name"* ]]; then
-                fixed_disks+=("$name $size")
-            fi
-        done
-    else
-        readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{ print $1 }')
-        # This dumps the newlines at the end of the entries in the lsblk table
-        disks=("${disks[@]//$'\n'/}")
-    fi
+    readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{ print $1 }')
+    # This dumps the newlines at the end of the entries in the lsblk table
+    disks=("${disks[@]//$'\n'/}")
 
     while true; do 
         # If there's only one disk, no need for a menu
-        if [[ -z ${disks[0]} ]]; then
-            echo "There are no compatible disks!"
-            err=1
-            return 
-        elif [[ ${#disks[@]} == 1 ]]; then
+        if [[ ${#disks[@]} == 1 ]]; then
             _diskname=${disks[0]}
             _datadisk="/dev/${disks[0]}"
-            return
         else
             unset answer
             menu "${disks[@]}" "$prompt" 
             if [[ $err == 1 ]]; then
                 echo "Something went wrong. Please try again."
-                continue
+                exit
             fi
 
             if [[ -n $answer ]]; then
@@ -86,7 +65,6 @@ function disk_select() {
                 _diskname=${disks[-1]}
                 _datadisk="/dev/${disks[-1]}"
             fi
-            return
         fi
     done
 }
@@ -103,7 +81,6 @@ function part_select() {
         # if there's only one partition, no need for a menu
         if [[ ${#parts[@]} == 1 ]]; then
             part=${parts[0]}
-            return
         else
             unset answer
             menu "${parts[@]}" "$_prompt"
@@ -126,7 +103,6 @@ function part_select() {
             else
                 part=${parts[-1]}
             fi
-            return
         fi
         break
     done
@@ -191,34 +167,25 @@ if [[ $_surface == 0  && $_haskeys == 0 ]]; then
         chattr -i /sys/firmware/efi/efivars/db* || chattr -i /sys/firmware/efi/efivars/KEK* || chattr -i /sys/firmware/efi/efivars/PK*
 
         disk_select "Which disk contains the keys to flash?"
-        
-        if [[ $err == 1 ]]; then
-            echo "Could not select a disk with keys. Not flashing keys."
-        else
-            part_select "$_diskname" "Which partition contains the keys?" 
+        part_select "$_diskname" "Which partition contains the keys?" 
 
-            if [[ $err == 1 ]]; then
-                echo "Could not select a partition with keys. Not flashing keys."
-            else
-                mkdir -p keys
-                mount "/dev/${part}" keys
+        mkdir -p keys
+        mount "/dev/${part}" keys
 
 
-                efi-updatevar -f keys/DB.auth db && efi-updatevar -f keys/KEK.auth KEK && efi-updatevar -f keys/PK.auth PK || SUCCESS=0
+        efi-updatevar -f keys/DB.auth db && efi-updatevar -f keys/KEK.auth KEK && efi-updatevar -f keys/PK.auth PK || SUCCESS=0
 
-                umount keys
+        umount keys
 
-                if [[ $SUCCESS != 1 ]]; then
-                    echo "Writing the keys failed. Make sure you're in setup mode in your firmware interface. Continue anyways? [y/N]:" 
-                    read -r answer
+        if [[ $SUCCESS != 1 ]]; then
+            echo "Writing the keys failed. Make sure you're in setup mode in your firmware interface. Continue anyways? [y/N]:" 
+            read -r answer
 
-                    if [[ $answer != 'y' && $answer != 'Y' ]]; then
-                        exit
-                    fi
-                else
-                    echo "Writing keys succeeded!"
-                fi
+            if [[ $answer != 'y' && $answer != 'Y' ]]; then
+                exit
             fi
+        else
+            echo "Writing keys succeeded!"
         fi
     fi
 fi
@@ -230,18 +197,9 @@ data=$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "Data" | awk '{ print $1 
 if [[ -n $data ]]; then
     _datadisk="$data"
     mount "/dev/$_datadisk" /mnt
-else
-    disk_select "Which disk contains the image to flash?"
-    if [[ $err == 1 ]]; then
-        echo "Disk selection failed. Could not select an image to flash. Exiting..."
-        exit
-    fi
 
+    disk_select "Which disk contains the image to flash?"
     part_select "$_diskname" "Which partition contains the image?"
-    if [[ $err == 1 ]]; then
-        echo "Partition selection failed. Could not select an image to flash. Exiting..."
-        exit
-    fi
 
     mount "/dev/${part}" /mnt
 fi
@@ -251,7 +209,7 @@ clear
 if [[ -n $data ]]; then 
     echo "Found Ventoy Data partition ${_datadisk} and mounted on /mnt"
 else
-    echo "Mounted data disk ${part} on /mnt"
+    echo "Mounted data disk ${_datadisk}${part} on /mnt"
 fi
 
 # Expected file naming scheme
@@ -358,14 +316,54 @@ _disk="/dev/nvme0n1"
 _size=$(numfmt --from=iec "${_finalsize}")
 
 clear
-disk_select "Which disk would you like to flash?" "$_size"
+echo "Found the following disks to flash:"
+while true; do
 
-if [[ $err == 1 ]]; then
-    echo "No disks were big enough for the image! Exiting..."
-    exit
-fi
+    # Get a list of all available disks large enough to take our image, sorted by size
+    readarray disks < <(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$_size" '$2 > var {print $1,$2}')
+    # dump newlines
+    disks=("${disks[@]//$'\n'/}")
 
-echo "Flashing image $_path/$_toflash to disk $_datadisk. Continue? [y/N]"
+    # remove the data disk, since we don't want to flash it.
+    fixed_disks=()
+    for value in "${disks[@]}"; do
+        name=$(echo "$value" | cut -d ' ' -f 1)
+        size=$(echo "$value" | cut -d ' ' -f 2 | numfmt --to=iec)
+        if [[ "$_datadisk" != *"$name"* ]]; then
+            fixed_disks+=("$name $size")
+        fi
+    done
+
+    if [[ -z ${disks[0]} ]]; then
+        echo "There are no disks big enough for this image! Exiting..."
+        exit
+    elif [[ "${#fixed_disks[@]}" == 1 ]]; then
+        _disk="/dev/$(echo "${fixed_disks[0]}" | cut -d ' ' -f 1)"
+    else 
+        unset answer
+        menu "${fixed_disks[@]}" "Which disk would you like to flash?" 
+
+        if [[ $err == 1 ]]; then
+            echo "Something went wrong. Please try again."
+            continue
+        fi 
+
+        if [[ -n $answer ]]; then
+            selected=$(echo "${fixed_disks[answer-1]}" | cut -d ' ' -f 1)
+
+            if [[ -z $selected ]]; then
+                echo "Invalid selection, starting over"
+                continue
+            fi
+            _disk="/dev/$selected"
+        else
+            _disk="/dev/$(echo "${fixed_disks[-1]}" | cut -d ' ' -f 1)"
+        fi
+    fi
+    break
+done
+
+echo "Flashing image $_path/$_toflash to disk $_disk. Continue? [y/N]"
 
 read -r answer
 
@@ -380,7 +378,7 @@ statussize="$(echo "$_finalsize" | cut -d '.' -f 1)"
 if ! (echo "$statussize" | grep -qo "G"); then
     statussize="${statussize}G"
 fi 
-$_compression -c -d $_path/"$_toflash" | pv -s "${statussize}" > "$_datadisk"
+$_compression -c -d $_path/"$_toflash" | pv -s "${statussize}" > "$_disk"
 
 sleep 3
 if [ $_hashash == 1 ]; then 
@@ -389,14 +387,14 @@ if [ $_hashash == 1 ]; then
     cat /usr/share/vx-img/image.sha256sum 
 
     echo "Computing hash..."
-    head -c $_finalsize "$_datadisk" | pv -s "${statussize}" | sha256sum
+    head -c $_finalsize "$_disk" | pv -s "${statussize}" | sha256sum
 fi
 
 # TODO make sure this works on every device
 echo "adding a boot entry for Debian shim"
 efibootmgr \
 	--create \
-	--disk "$_datadisk" \
+	--disk "$_disk" \
 	--part 1 \
 	--label "grub" \
 	--loader "\\EFI\\debian\\shimx64.efi" \
@@ -406,7 +404,7 @@ efibootmgr \
 echo "adding a boot entry for VxLinux"
 efibootmgr \
 	--create \
-	--disk "$_datadisk" \
+	--disk "$_disk" \
 	--part 1 \
 	--label "VxLinux" \
 	--loader "\\EFI\\debian\\VxLinux-signed.efi" \
