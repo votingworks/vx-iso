@@ -40,13 +40,16 @@ function disk_select() {
         # This dumps the newlines at the end of the entries in the lsblk table
         disks=("${disks[@]//$'\n'/}")
         fixed_disks=()
+        just_disks=()
         for value in "${disks[@]}"; do
             name=$(echo "$value" | cut -d ' ' -f 1)
             size=$(echo "$value" | cut -d ' ' -f 2 | numfmt --to=iec)
             if [[ "$_datadisk" != *"$name"* ]]; then
                 fixed_disks+=("$name $size")
+                just_disks+=("$name")
             fi
         done
+        disks=("${just_disks[@]}")
     else
         readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{ print $1 }')
         # This dumps the newlines at the end of the entries in the lsblk table
@@ -198,12 +201,9 @@ function flash_keys() {
             SUCCESS=1
 
             # We have to make sure we can write the keys. 
-            # shellcheck disable=SC2210 
-            chattr -i /sys/firmware/efi/efivars/db* 2&>1 /dev/null  
-            # shellcheck disable=SC2210 
-            chattr -i /sys/firmware/efi/efivars/KEK* 2&>1 /dev/null 
-            # shellcheck disable=SC2210 
-            chattr -i /sys/firmware/efi/efivars/PK* 2&>1 /dev/null 
+            chattr -i /sys/firmware/efi/efivars/db* 2>&1 /dev/null  
+            chattr -i /sys/firmware/efi/efivars/KEK* 2>&1 /dev/null 
+            chattr -i /sys/firmware/efi/efivars/PK* 2>&1 /dev/null 
 
             keys=$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep -iF "Keys" | awk '{ print $1 }')
 
@@ -392,7 +392,11 @@ if [[ $err == 1 ]]; then
     exit
 fi
 
-echo "Flashing image $_path/$_toflash to disk $_datadisk. Continue? [y/N]"
+echo "Flashing image" 
+echo "$_path/$_toflash"
+echo "to disk"
+echo "$_datadisk"
+echo "Continue? [y/N]"
 
 read -r answer
 
