@@ -12,7 +12,6 @@ function menu() {
     unset 'items[-1]'
 
     if [ ${#items[@]} -eq 0 ]; then
-        echo "Got an empty list!"
         err=1
         return 
     fi
