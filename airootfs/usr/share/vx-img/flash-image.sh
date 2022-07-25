@@ -138,6 +138,24 @@ function part_select() {
 # text. See votingworks/vx-iso#21.
 sleep 1
 clear
+# Detect if this disk already has VotingWorks data on it and copy the machine config
+vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
+
+if [[ -n $vg ]]; then
+
+    # Mount the root partition so symlinks are preserved.
+    dir=$(find "/dev/$vg" -name "var")
+    mount "$dir" /mnt
+
+    if [ -d "/mnt/vx/config" ]; then
+        echo "Found /vx/config to copy. Press any key to continue."
+        read -r
+        tar -czvf vx-config.tar.gz /mnt/vx/config
+    fi
+
+    umount /mnt
+fi
+clear
 
 function flash_keys() {
     # use dmidecode to detect if we're on a Surface Go
@@ -420,6 +438,26 @@ if [ $_hashash == 1 ]; then
 
     echo "Computing hash..."
     head -c $_finalsize "$_datadisk" | pv -s "${statussize}" | sha256sum
+fi
+
+umount /mnt
+
+# Now that we've flashed the image, but /vx/config back if it exists.
+if [ -e "vx-config.tar.gz" ]; then
+    vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
+
+    if [[ -n $vg ]]; then
+        dir=$(find "/dev/$vg" -name "var")
+        mount "$dir" /mnt
+
+        if [ -d "/mnt/vx/config" ]; then
+            tar --extract --file=vx-config.tar.gz --gzip --verbose --keep-directory-symlink -C /
+        fi
+
+        umount /mnt
+        echo "Replacing /vx/config was successful. Press any key to continue."
+        read -r
+    fi
 fi
 
 # TODO make sure this works on every device
