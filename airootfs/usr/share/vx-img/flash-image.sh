@@ -441,7 +441,7 @@ fi
 
 umount /mnt
 
-# Now that we've flashed the image, but /vx/config back if it exists.
+# Now that we've flashed the image, put /vx/config back if it exists.
 if [ -e "vx-config.tar.gz" ]; then
     vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
 
