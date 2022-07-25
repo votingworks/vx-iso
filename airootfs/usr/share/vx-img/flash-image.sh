@@ -143,7 +143,6 @@ vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
 
 if [[ -n $vg ]]; then
 
-    # Mount the root partition so symlinks are preserved.
     dir=$(find "/dev/$vg" -name "var")
     mount "$dir" /mnt
 
