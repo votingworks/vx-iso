@@ -77,7 +77,7 @@ function disk_select() {
             if [[ -n $answer ]]; then
                 idx=$(($(int "$answer") - 1))
                 selected="${disks[$idx]}"
-                if [[ $idx == " - 1" || -z $selected ]]; then
+                if [[ $idx == "-1" || -z $selected ]]; then
                     echo "Invalid selection, starting over"
                     sleep 3
                     clear
