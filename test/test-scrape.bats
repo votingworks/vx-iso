@@ -5,7 +5,6 @@ setup() {
     DIR="$( cd "$( dirname "$BATS_TEST_FILENAME" )" >/dev/null 2>&1 && pwd )"
     # make executables in src/ visible to PATH
     PATH="$DIR/../airootfs/usr/share/vx-img/:$PATH"
-    echo $PATH
 }
 
 @test "can run our script" {

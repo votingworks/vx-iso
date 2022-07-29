@@ -8,7 +8,9 @@ setup() {
     DIR="$( cd "$( dirname "$BATS_TEST_FILENAME" )" >/dev/null 2>&1 && pwd )"
     # make executables in src/ visible to PATH
     PATH="$DIR/../airootfs/usr/share/vx-img/:$PATH"
-    echo $PATH
+
+    # shellcheck source=util.sh
+    source util.sh
 }
 
 @test "Permissions on util.sh are set properly" {
@@ -16,7 +18,6 @@ setup() {
 }
 
 @test "test empty menu list" {
-    . util.sh
     list=()
     prompt="Testing an empty list"
     run menu "${list[@]}" "$prompt" 
@@ -25,7 +26,6 @@ setup() {
 }
 
 @test "test simple menu" {
-    . util.sh
     list=("item")
     prompt="Select an item"
     
@@ -40,12 +40,11 @@ EndOfMessage
     # Because run uses a subshell, any variables that get set don't get passed
     # back here. Run menu again without the subshell to set answer.
     menu "${list[@]}" "$prompt" <<< 1
-    assert_equal $answer 1 
+    assert_equal "$answer" 1 
 }
 
 @test "test complex menu" {
-    . util.sh
-    list=("item1", "item2")
+    list=("item1" "item2")
     prompt="Select an item"
     
     run menu "${list[@]}" "$prompt" <<< 1
@@ -60,8 +59,8 @@ EndOfMessage
     # Because run uses a subshell, any variables that get set don't get passed
     # back here. Run menu again without the subshell to set answer.
     menu "${list[@]}" "$prompt" <<< 1
-    assert_equal $answer 1 
+    assert_equal "$answer" 1 
 
     menu "${list[@]}" "$prompt" <<< 2
-    assert_equal $answer 2 
+    assert_equal "$answer" 2 
 }
