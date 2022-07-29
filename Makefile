@@ -7,6 +7,10 @@ dev:
 	git submodule update --init
 	sudo ./test/bats/install.sh /usr/local
 
+	# use our hooks
+	git config core.hooksPath .hooks/
+	
+
 build:
 	sudo mkarchiso -v -w /tmp/vxiso-tmp -o out .
 
