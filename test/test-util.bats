@@ -13,6 +13,30 @@ setup() {
     source util.sh
 }
 
+@test "test int function" {
+
+    res=$(int "1")
+    assert_equal "$res" 1
+
+    res=$(int "asdf")
+    assert_equal "$res" ""
+}
+
+@test "test mocked lsblk" {
+    function lsblk {
+    cat << EOM
+sda1   507510784 part
+vda2 20955791360 part
+vda  21474836480 disk
+EOM
+    }
+    run lsblk
+expected="sda1   507510784 part
+vda2 20955791360 part
+vda  21474836480 disk"
+    assert_output "$expected"
+}
+
 @test "Permissions on util.sh are set properly" {
     util.sh
 }
@@ -32,10 +56,9 @@ setup() {
     run menu "${list[@]}" "$prompt" <<< 1
     assert_success
 
-    assert_output << EndOfMessage
-    1. item
-    $prompt [Default: item]: 
-EndOfMessage
+    expected="1. item
+$prompt Default: [item]" 
+    assert_output "$expected"
 
     # Because run uses a subshell, any variables that get set don't get passed
     # back here. Run menu again without the subshell to set answer.
@@ -50,11 +73,10 @@ EndOfMessage
     run menu "${list[@]}" "$prompt" <<< 1
     assert_success
 
-    assert_output << EndOfMessage
-    1. item1
-    2. item2
-    $prompt [Default: item1]: 
-EndOfMessage
+    expected="1. item1
+2. item2
+$prompt Default: [item2]"
+    assert_output "$expected"
 
     # Because run uses a subshell, any variables that get set don't get passed
     # back here. Run menu again without the subshell to set answer.
@@ -63,4 +85,111 @@ EndOfMessage
 
     menu "${list[@]}" "$prompt" <<< 2
     assert_equal "$answer" 2 
+}
+
+@test "test complex menu bad selection" {
+    list=("item1" "item2")
+    prompt="Select an item"
+    
+    run menu "${list[@]}" "$prompt" <<< 1
+    assert_success
+
+    expected="1. item1
+2. item2
+$prompt Default: [item2]"
+    assert_output "$expected"
+
+    # Because run uses a subshell, any variables that get set don't get passed
+    # back here. Run menu again without the subshell to set answer.
+    menu "${list[@]}" "$prompt" <<< 1
+    assert_equal "$answer" 1 
+
+    menu "${list[@]}" "$prompt" <<< "x"
+    assert_equal "$answer" "x" 
+}
+@test "test disk select one disk" {
+    prompt="Which disk would you like to select?"
+    run disk_select "$prompt" <<< 1
+    assert_success
+
+    disk_select "$prompt" <<< 1
+    assert_equal "$_diskname" "vda"
+    assert_equal "$_datadisk" "/dev/vda"
+}
+
+
+@test "test disk select no disk" {
+    function lsblk {
+        echo ""
+    }
+    prompt="Which disk would you like to select?"
+    run disk_select "$prompt" <<< 1
+    assert_failure
+    assert_output "There are no compatible disks!"
+}
+
+@test "test disk select two disks" {
+    function lsblk {
+    cat << EOM
+sda    507510784 disk
+sda1   507510784 part
+vda2 20955791360 part
+vda  21474836480 disk
+EOM
+    }
+    prompt="Which disk would you like to select?"
+    run disk_select "$prompt" <<< 1
+    assert_success
+    expected="1. sda
+2. vda
+$prompt Default: [vda]"
+    assert_output "$expected" 
+
+    unset _diskname
+    unset _datadisk
+
+    disk_select "$prompt" <<< 1
+    assert_equal "$_diskname" "sda"
+    assert_equal "$_datadisk" "/dev/sda"
+
+    unset _diskname
+    unset _datadisk
+    disk_select "$prompt" <<< 2
+    assert_equal "$_diskname" "vda"
+    assert_equal "$_datadisk" "/dev/vda"
+    unset _diskname
+    unset _datadisk
+
+    disk_select "$prompt" <<< "" 
+    assert_equal "$_diskname" "vda"
+    assert_equal "$_datadisk" "/dev/vda"
+}
+
+@test "test disk_select two disks bad selection" {
+    function lsblk {
+    cat << EOM
+sda    507510784 disk
+sda1   507510784 part
+vda2 20955791360 part
+vda  21474836480 disk
+EOM
+    }
+    prompt="Which disk would you like to select?"
+    run disk_select "$prompt" <<< "a"
+    assert_success
+    expected="1. sda
+2. vda
+$prompt Default: [vda]
+Invalid selection, starting over"
+#    assert_output "$expected"
+
+
+    unset _diskname
+    unset _datadisk
+    disk_select "$prompt" <<< "aasdfasdfa" 
+
+    echo "$_diskname"
+    assert_equal "$_diskname" "vda"
+    assert_equal "$_datadisk" "/dev/vda"
+    assert false
 }
