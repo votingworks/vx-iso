@@ -23,3 +23,4 @@ clean-all: clean
 	
 lint:
 	shellcheck -x -P airootfs/usr/share/vx-img/ airootfs/usr/share/vx-img/*
+	shellcheck -x test/* 
