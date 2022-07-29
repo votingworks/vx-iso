@@ -4,8 +4,7 @@ deps:
 	sudo pacman -S git archiso
 
 dev:
-	git clone https://github.com/bats-core/bats-core.git
-	sudo ./bats-core/install.sh /usr/local
+	git submodule update --init
 
 build:
 	sudo mkarchiso -v -w /tmp/vxiso-tmp -o out .
