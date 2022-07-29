@@ -42,3 +42,26 @@ EndOfMessage
     menu "${list[@]}" "$prompt" <<< 1
     assert_equal $answer 1 
 }
+
+@test "test complex menu" {
+    . util.sh
+    list=("item1", "item2")
+    prompt="Select an item"
+    
+    run menu "${list[@]}" "$prompt" <<< 1
+    assert_success
+
+    assert_output << EndOfMessage
+    1. item1
+    2. item2
+    $prompt [Default: item1]: 
+EndOfMessage
+
+    # Because run uses a subshell, any variables that get set don't get passed
+    # back here. Run menu again without the subshell to set answer.
+    menu "${list[@]}" "$prompt" <<< 1
+    assert_equal $answer 1 
+
+    menu "${list[@]}" "$prompt" <<< 2
+    assert_equal $answer 2 
+}
