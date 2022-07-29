@@ -11,8 +11,7 @@ function menu() {
     unset 'items[-1]'
 
     if [ ${#items[@]} -eq 0 ]; then
-        export err=1
-        return 
+        return 1
     fi
 
     i=1
@@ -24,5 +23,5 @@ function menu() {
     echo  "$prompt Default: [${items[-1]}]"
     read -r answer
     export answer
-    export err=0
+    return 0
 }

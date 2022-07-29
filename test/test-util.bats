@@ -1,5 +1,5 @@
 setup() {
-    load '../bats-core/test/test_helper/bats-support/load'
+    load 'test_helper/bats-support/load'
     load 'test_helper/bats-assert/load'
     
     # get the containing directory of this file
@@ -17,8 +17,10 @@ setup() {
 
 @test "test empty menu list" {
     . util.sh
-    list=""
-    menu list "Testing an empty list"
-    assert_output ""
+    list=()
+    run menu $list "Testing an empty list"
+    [ "$status" -eq 1 ]
+    assert [ -z $answer ]
+    refute_output "Testing an empty list"
 }
 

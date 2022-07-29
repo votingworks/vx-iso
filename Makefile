@@ -5,6 +5,7 @@ deps:
 
 dev:
 	git submodule update --init
+	sudo ./test/bats/install.sh /usr/local
 
 build:
 	sudo mkarchiso -v -w /tmp/vxiso-tmp -o out .
