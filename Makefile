@@ -17,4 +17,5 @@ clean:
 clean-all: clean
 	sudo rm -rf bats-core
 	
-
+lint:
+	shellcheck -x -P airootfs/usr/share/vx-img/ airootfs/usr/share/vx-img/*

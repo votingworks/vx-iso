@@ -3,7 +3,7 @@
 err=0
 
 # shellcheck source=util.sh
-. util.sh
+source util.sh
 
 function disk_select() {
     unset _diskname
