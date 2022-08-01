@@ -5,8 +5,6 @@ err=0
 # shellcheck source=util.sh
 source util.sh
 
-
-
 # This is to evade any race conditions with the display buffer that cuts off
 # text. See votingworks/vx-iso#21.
 sleep 1

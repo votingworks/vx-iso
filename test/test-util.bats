@@ -165,7 +165,6 @@ $prompt Default: [vda]"
     assert_equal "$_datadisk" "/dev/vda"
 }
 
-# This test is broken because of the clear command. I'm not totally sure how to
 # make it work.
 @test "test disk_select two disks bad selection" {
     function lsblk {
@@ -190,8 +189,10 @@ Invalid selection, starting over
 $prompt Default: [vda]"
 
     # because our output has special control codes in it (produced by clear),
-    # we have to strip them out for the string comparison to work properly
-    output="${$output//\[H\[2J\[3J/}"
+    # we have to strip them out for the string comparison to work properly.
+    # if we don't do this then test failures become unreadable, as the clear 
+    # characters get printed, clearing the screen. 
+    output="${output//\[H\[2J\[3J/}"
     assert_equal "$output" "$expected"
 
     unset _diskname
@@ -199,9 +200,102 @@ $prompt Default: [vda]"
     disk_select "$prompt" <<< "aasdfasdfa
 1"  > /dev/null
 
-    echo "$_diskname"
-    # vda is chosen here because it is the default. When the program receives
-    # the end of input that's what it picks. 
     assert_equal "$_diskname" "sda"
     assert_equal "$_datadisk" "/dev/sda"
+}
+
+
+@test "test part select one part" {
+    function lsblk {
+    cat << EOM
+sda    507510784 disk
+sda1   507510784 part
+EOM
+    }
+
+    prompt="Which part would you like to select?"
+    run part_select "sda" "$prompt" <<< 1
+    assert_success
+
+    part_select "sda" "$prompt" <<< 1
+    assert_equal "$part" "sda1"
+}
+
+
+# In general, we assume that there will be at least one partition, so the zero
+# partitions found condition isn't particularly descriptive.
+@test "test part select no part" {
+    function lsblk {
+        echo ""
+    }
+    prompt="Which part would you like to select?"
+    run part_select "sda" "$prompt" <<< 1
+    assert_failure
+    assert_output "Something went wrong. Please try again."
+}
+
+@test "test part select two parts" {
+    function lsblk {
+    cat << EOM
+vda2 20955791360 part
+vda1 512         part
+vda  21474836480 disk
+EOM
+    }
+    prompt="Which part would you like to select?"
+    run part_select "vda" "$prompt" <<< 1
+    assert_success
+    expected="1. vda2
+2. vda1
+$prompt Default: [vda1]"
+    assert_output "$expected" 
+
+    unset part
+
+    part_select "vda" "$prompt" <<< 1
+    assert_equal "$part" "vda2"
+
+    unset part
+    part_select "vda" "$prompt" <<< 2
+    assert_equal "$part" "vda1"
+    
+    unset part
+
+    part_select "vda" "$prompt" <<< "" 
+    assert_equal "$part" "vda1"
+}
+
+@test "test part_select two parts bad selection" {
+    function lsblk {
+    cat << EOM
+vda2 20955791360 part
+vda1 512         part
+vda  21474836480 disk
+EOM
+    }
+    prompt="Which part would you like to select?"
+    run $(part_select "vda" "$prompt" <<< "a" > /dev/null)
+    assert_success
+
+    output=$(part_select "vda" "$prompt" <<< "a")
+    expected="1. vda2
+2. vda1
+$prompt Default: [vda1]
+Invalid selection, starting over
+1. vda2
+2. vda1
+$prompt Default: [vda1]"
+
+    # because our output has special control codes in it (produced by clear),
+    # we have to strip them out for the string comparison to work properly.
+    # if we don't do this then test failures become unreadable, as the clear 
+    # characters get printed, clearing the screen. 
+    output="${output//\[H\[2J\[3J/}"
+    assert_equal "$output" "$expected"
+
+    unset part
+    part_select "vda" "$prompt" <<< "aasdfasdfa
+1"  > /dev/null
+
+    assert_equal "$part" "vda2"
 }
