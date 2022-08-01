@@ -6,46 +6,6 @@ err=0
 source util.sh
 
 
-function part_select() {
-    unset part
-    _prompt=$2
-    _diskname=$1
-    while true; do
-        # Get all the partitions on the selected disk
-        readarray parts < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "part" | grep "$_diskname" | awk '{ print $1 }')
-        parts=("${parts[@]//$'\n'/}")
-
-        # if there's only one partition, no need for a menu
-        if [[ ${#parts[@]} == 1 ]]; then
-            part=${parts[0]}
-            return
-        else
-            unset answer
-            menu "${parts[@]}" "$_prompt"
-            if [[ $err == 1 ]]; then
-                echo "Something went wrong. Please try again."
-                err=1
-                return
-            fi
-
-            if [[ -n $answer ]]; then
-                selected="${parts[answer-1]}"
-
-                if [[ -z $selected ]]; then
-                    echo "Invalid selection, starting over"
-                    sleep 3
-                    clear
-                    continue
-                fi
-                part=$selected
-            else
-                part=${parts[-1]}
-            fi
-            return
-        fi
-        break
-    done
-}
 
 # This is to evade any race conditions with the display buffer that cuts off
 # text. See votingworks/vx-iso#21.

@@ -93,3 +93,42 @@ function disk_select() {
         fi
     done
 }
+
+function part_select() {
+    unset part
+    _prompt=$2
+    _diskname=$1
+    while true; do
+        # Get all the partitions on the selected disk
+        readarray parts < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "part" | grep "$_diskname" | awk '{ print $1 }')
+        parts=("${parts[@]//$'\n'/}")
+
+        # if there's only one partition, no need for a menu
+        if [[ ${#parts[@]} == 1 ]]; then
+            part=${parts[0]}
+            return
+        else
+            unset answer
+            if ! menu "${parts[@]}" "$prompt"; then
+                echo "Something went wrong. Please try again."
+                return 1
+            fi
+
+            if [[ -n $answer ]]; then
+                idx=$(($(int "$answer") - 1))
+                selected="${parts[$idx]}"
+                if [[ $idx == "-1" || -z $selected ]]; then
+                    echo "Invalid selection, starting over"
+                    sleep 3
+                    clear
+                    continue
+                fi
+                export part=$selected
+            else
+                export part=${parts[-1]}
+            fi
+            return 0
+        fi
+        break
+    done
+}
