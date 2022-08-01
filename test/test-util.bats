@@ -177,25 +177,31 @@ vda  21474836480 disk
 EOM
     }
     prompt="Which disk would you like to select?"
-    run disk_select "$prompt" <<< "a"
+    run $(disk_select "$prompt" <<< "a" > /dev/null)
     assert_success
+
+    output=$(disk_select "$prompt" <<< "a")
     expected="1. sda
 2. vda
 $prompt Default: [vda]
 Invalid selection, starting over
-\033[2J\033[H
 1. sda
 2. vda
 $prompt Default: [vda]"
 
-#    assert_output "$expected"
-
+    # because our output has special control codes in it (produced by clear),
+    # we have to strip them out for the string comparison to work properly
+    output="${$output//\[H\[2J\[3J/}"
+    assert_equal "$output" "$expected"
 
     unset _diskname
     unset _datadisk
-    disk_select "$prompt" <<< "aasdfasdfa" 
+    disk_select "$prompt" <<< "aasdfasdfa
+1"  > /dev/null
 
     echo "$_diskname"
-    assert_equal "$_diskname" "vda"
-    assert_equal "$_datadisk" "/dev/vda"
+    # vda is chosen here because it is the default. When the program receives
+    # the end of input that's what it picks. 
+    assert_equal "$_diskname" "sda"
+    assert_equal "$_datadisk" "/dev/sda"
 }
