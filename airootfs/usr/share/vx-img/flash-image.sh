@@ -463,24 +463,26 @@ if [ -e "vx-config.tar.gz" ]; then
 fi
 
 # TODO make sure this works on every device
-echo "adding a boot entry for Debian shim"
-efibootmgr \
-	--create \
-	--disk "$_datadisk" \
-	--part 1 \
-	--label "grub" \
-	--loader "\\EFI\\debian\\shimx64.efi" \
-    --quiet
 
-
-echo "adding a boot entry for VxLinux"
-efibootmgr \
-	--create \
-	--disk "$_datadisk" \
-	--part 1 \
-	--label "VxLinux" \
-	--loader "\\EFI\\debian\\VxLinux-signed.efi" \
-    --quiet
+if [ $_surface == 1 ]; then
+    echo "adding a boot entry for Debian shim"
+    efibootmgr \
+        --create \
+        --disk "$_datadisk" \
+        --part 1 \
+        --label "grub" \
+        --loader "\\EFI\\debian\\shimx64.efi" \
+        --quiet
+else
+    echo "adding a boot entry for VxLinux"
+    efibootmgr \
+        --create \
+        --disk "$_datadisk" \
+        --part 1 \
+        --label "VxLinux" \
+        --loader "\\EFI\\debian\\VxLinux-signed.efi" \
+        --quiet
+fi
 
 clear
 echo "The flash was successful! Press Return to reboot in 5 seconds."
