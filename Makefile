@@ -14,7 +14,6 @@ dev:
 
 	sudo pacman -S kcov
 	
-
 build:
 	sudo mkarchiso -v -w /tmp/vxiso-tmp -o out .
 

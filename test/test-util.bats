@@ -117,6 +117,22 @@ $prompt Default: [item2]"
     assert_equal "$_datadisk" "/dev/vda"
 }
 
+@test "test disk select one disk too small" {
+    prompt="Which disk would you like to select?"
+    run disk_select "$prompt" "21474836481" <<< 1
+    assert_failure
+    assert_output "There are no compatible disks!"
+}
+
+@test "test disk select one disk right size" {
+    prompt="Which disk would you like to select?"
+    run disk_select "$prompt" "21474836480" <<< 1
+    assert_success
+
+    disk_select "$prompt" <<< 1
+    assert_equal "$_diskname" "vda"
+    assert_equal "$_datadisk" "/dev/vda"
+}
 
 @test "test disk select no disk" {
     function lsblk {

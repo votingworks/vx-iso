@@ -37,8 +37,7 @@ function disk_select() {
     size=$2
 
     if [[ -n $size ]]; then
-        echo "$size"
-        readarray disks < <(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$size" '$2 > var {print $1,$2}')
+        readarray disks < <(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$size" '$2 >= var {print $1,$2}')
         # This dumps the newlines at the end of the entries in the lsblk table
         disks=("${disks[@]//$'\n'/}")
         fixed_disks=()
@@ -69,11 +68,9 @@ function disk_select() {
             return 0
         else
             unset answer
-            if ! menu "${disks[@]}" "$prompt"; then
-                echo "Something went wrong. Please try again."
-                continue
-            fi
-
+            # At this point we know disks is at least of size 2, so menu can't
+            # throw an error. QED no error handling needed. 
+            menu "${disks[@]}" "$prompt"
             if [[ -n $answer ]]; then
                 idx=$(($(int "$answer") - 1))
                 selected="${disks[$idx]}"
@@ -129,6 +126,5 @@ function part_select() {
             fi
             return 0
         fi
-        break
     done
 }
