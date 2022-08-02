@@ -325,7 +325,7 @@ for f in "$_path"/*; do
         _images+=("$_filename")
         _extensions+=("$_extension")
     elif [[ "$_extension" == "sha256sum" ]]; then
-        _hashash=0
+        _hashash=1
     fi
 done
 
