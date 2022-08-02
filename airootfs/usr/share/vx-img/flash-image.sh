@@ -147,7 +147,7 @@ if [[ -n $vg ]]; then
     mount "$dir" /mnt
 
     if [ -d "/mnt/vx/config" ]; then
-        echo "Found /vx/config to copy. Press any key to continue."
+        echo "Found /vx/config to copy. Press Return to continue."
         read -r
         tar -czvf vx-config.tar.gz /mnt/vx/config
     fi
@@ -239,6 +239,8 @@ function flash_keys() {
 
                     keys="${part}"
                 fi
+	    else
+		echo "Found Keys partition automatically."
             fi
             mkdir -p keys
             mount "/dev/${keys}" keys
@@ -256,7 +258,8 @@ function flash_keys() {
                     exit
                 fi
             else
-                echo "Writing keys succeeded!"
+                echo "Writing keys succeeded! Press Return to continue."
+		read -r
             fi
         fi
     fi
@@ -480,7 +483,8 @@ efibootmgr \
     --quiet
 
 clear
-echo "The flash was successful! Press any key to reboot in 5 seconds."
-read -r 
+echo "The flash was successful! Press Return to reboot in 5 seconds."
+read -r
+echo "Rebooting in 5 seconds..."
 sleep 5
 reboot
