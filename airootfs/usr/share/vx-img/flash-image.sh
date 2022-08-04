@@ -30,9 +30,11 @@ function menu() {
 function disk_select() {
     unset _diskname
     unset _datadisk
-
-    prompt=$1
-    size=$2
+    
+    items=("$@")
+    prompt="${items[0]}"
+    size="${items[1]}"
+    ignore=("${items[@]:2}")
 
     if [[ -n $size ]]; then
         readarray disks < <(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$_size" '$2 > var {print $1,$2}')
@@ -40,19 +42,37 @@ function disk_select() {
         disks=("${disks[@]//$'\n'/}")
         fixed_disks=()
         just_disks=()
+
         for value in "${disks[@]}"; do
             name=$(echo "$value" | cut -d ' ' -f 1)
             size=$(echo "$value" | cut -d ' ' -f 2 | numfmt --to=iec)
+
+
+            if [[ -n ${ignore[0]} ]]; then
+                flag=false
+                for i in "${ignore[@]}"; do
+                    if [[ "$name" == "$i" ]]; then
+                        flag=true
+                        break
+                    fi
+                done
+                if [[ $flag == true ]]; then
+                    continue
+                fi
+            fi
+
             if [[ "$_datadisk" != *"$name"* ]]; then
                 fixed_disks+=("$name $size")
                 just_disks+=("$name")
             fi
+
         done
         disks=("${just_disks[@]}")
     else
         readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{ print $1 }')
         # This dumps the newlines at the end of the entries in the lsblk table
         disks=("${disks[@]//$'\n'/}")
+
     fi
 
     while true; do 
@@ -292,10 +312,14 @@ fi
 
 
 clear
+ignore=()
 if [[ -n $data ]]; then 
     echo "Found data partition ${_datadisk} and mounted on /mnt"
+    # cut off the partition number
+    ignore+=("${_datadisk::-1}")
 else
     echo "Mounted data disk ${part} on /mnt"
+    ignore+=("${_diskname}")
 fi
 
 # Expected file naming scheme
@@ -404,7 +428,7 @@ _disk="/dev/nvme0n1"
 _size=$(numfmt --from=iec "${_finalsize}")
 
 clear
-disk_select "Which disk would you like to flash?" "$_size"
+disk_select "Which disk would you like to flash?" "$_size" "${ignore[@]}"
 
 if [[ $err == 1 ]]; then
     echo "No disks were big enough for the image! Exiting..."
