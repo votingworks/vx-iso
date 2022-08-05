@@ -237,9 +237,12 @@ function flash_keys() {
             SUCCESS=1
 
             # We have to make sure we can write the keys. 
-            chattr -i /sys/firmware/efi/efivars/db* 2>&1 /dev/null  
-            chattr -i /sys/firmware/efi/efivars/KEK* 2>&1 /dev/null 
-            chattr -i /sys/firmware/efi/efivars/PK* 2>&1 /dev/null 
+            # shellcheck disable=SC2210
+            chattr -i /sys/firmware/efi/efivars/db* 2&>1 /dev/null  
+            # shellcheck disable=SC2210
+            chattr -i /sys/firmware/efi/efivars/KEK* 2&>1 /dev/null 
+            # shellcheck disable=SC2210
+            chattr -i /sys/firmware/efi/efivars/PK* 2&>1 /dev/null 
 
             keys=$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep -iF "Keys" | awk '{ print $1 }')
 
