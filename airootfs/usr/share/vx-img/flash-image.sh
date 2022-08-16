@@ -512,8 +512,12 @@ else
 fi
 
 clear
-echo "The flash was successful! Press Return to reboot in 5 seconds."
+echo "The flash was successful!"
+echo ""
+echo "Next: MAKE SURE TO TURN SECURE BOOT BACK ON!"
+echo ""
+echo "Press Return to reboot into BIOS settings."
 read -r
 echo "Rebooting in 5 seconds..."
 sleep 5
-reboot
+systemctl reboot --firmware-setup
