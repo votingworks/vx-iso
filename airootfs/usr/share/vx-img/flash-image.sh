@@ -438,6 +438,11 @@ if [[ $err == 1 ]]; then
     exit
 fi
 
+vxdev=0
+if echo "$_toflash" | grep -iF "vxdev"; then
+    vxdev=1
+fi
+
 echo "Flashing image" 
 echo "$_path/$_toflash"
 echo "to disk"
@@ -489,9 +494,8 @@ umount /mnt
 #    fi
 #fi
 
-# TODO make sure this works on every device
-
-if [ $_surface == 1 ]; then
+# If we're on a surface or a VxDev device, we don't do ESI. 
+if [[ $_surface == 1 || $vxdev == 1 ]]; then
     echo "adding a boot entry for Debian shim"
     efibootmgr \
         --create \
