@@ -1,0 +1,58 @@
+---
+
+- name: Set
+  set_fact:
+    removable_devices: "{{ removable_devices | default({}) | combine({item : ansible_devices[item].model}) }}"
+  when: ansible_devices[item].removable == "1"
+  with_items:
+    - "{{ ansible_devices.keys() }}"
+
+- name: Set2
+  set_fact:
+    device_menu: |
+      {{ device_menu | default('') }}
+      Name: {{ item.key }} ({{ item.value }})
+  with_dict:
+    - "{{ removable_devices }}"
+
+- name: Debug var
+  debug:
+    var: device_menu
+
+- name: Prompt for device
+  pause:
+    prompt: |
+      We found the following removable devices:
+      {{ device_menu }}
+      Please enter the name of the device you want to install vx-iso on.
+  register: device_name
+ 
+#TODO: Error check device actually exists
+#TODO: Give option to exit / final confirmation
+
+- name: Set USB disk path var
+  set_fact:
+    usb_disk_path: "/dev/{{ device_name.user_input }}"
+
+- name: Get any active mounts
+  shell:
+    cmd: lsblk -no mountpoint {{ usb_disk_path }} | sed '/^$/d'
+  register: lsblk_result
+
+- name:
+  debug:
+    var: lsblk_result
+
+- name: Unmount the USB drive
+  mount: 
+    path: "{{ item }}"
+    state: unmounted
+  with_items:
+    - "{{ lsblk_result.stdout_lines }}"
+ 
+#-- USB device should not be mounted at this point
+#-- TODO: path to vxiso as a var (could be inventory or command line?)
+- name: Copy the vx-iso image to the USB drive. This will take a few minutes
+  become: true
+  command: dd if=/media/share/vxdev-compat-vx-iso-2022.08.18-x86_64.iso of={{ usb_disk_path|quote }} bs=4M 
+
