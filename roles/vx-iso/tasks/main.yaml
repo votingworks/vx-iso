@@ -54,5 +54,5 @@
 #-- TODO: path to vxiso as a var (could be inventory or command line?)
 - name: Copy the vx-iso image to the USB drive. This will take a few minutes
   become: true
-  command: dd if=/media/share/vxdev-compat-vx-iso-2022.08.18-x86_64.iso of={{ usb_disk_path|quote }} bs=4M 
+  command: dd if=/path/to/vx-iso.iso of={{ usb_disk_path|quote }} bs=4M 
 
