@@ -1,13 +1,13 @@
 ---
 
-- name: Set
+- name: Create the removable device lookup dictionary
   set_fact:
     removable_devices: "{{ removable_devices | default({}) | combine({item : ansible_devices[item].model}) }}"
   when: ansible_devices[item].removable == "1"
   with_items:
     - "{{ ansible_devices.keys() }}"
 
-- name: Set2
+- name: Create the device menu
   set_fact:
     device_menu: |
       {{ device_menu | default('') }}
@@ -15,11 +15,7 @@
   with_dict:
     - "{{ removable_devices }}"
 
-- name: Debug var
-  debug:
-    var: device_menu
-
-- name: Prompt for device
+- name: Prompt for device to flash
   pause:
     prompt: |
       We found the following removable devices:
@@ -39,10 +35,6 @@
     cmd: lsblk -no mountpoint {{ usb_disk_path }} | sed '/^$/d'
   register: lsblk_result
 
-- name:
-  debug:
-    var: lsblk_result
-
 - name: Unmount the USB drive
   mount: 
     path: "{{ item }}"
@@ -51,8 +43,7 @@
     - "{{ lsblk_result.stdout_lines }}"
  
 #-- USB device should not be mounted at this point
-#-- TODO: path to vxiso as a var (could be inventory or command line?)
 - name: Copy the vx-iso image to the USB drive. This will take a few minutes
   become: true
-  command: dd if=/path/to/vx-iso.iso of={{ usb_disk_path|quote }} bs=4M 
+  command: dd if={{ iso_file }} of={{ usb_disk_path }} bs=4M 
 
