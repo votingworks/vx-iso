@@ -23,12 +23,22 @@
       Please enter the name of the device you want to install vx-iso on.
   register: device_name
  
-#TODO: Error check device actually exists
-#TODO: Give option to exit / final confirmation
-
 - name: Set USB disk path var
   set_fact:
     usb_disk_path: "/dev/{{ device_name.user_input }}"
+
+- name: Confirm the device exists
+  stat:
+    path: "{{ usb_disk_path }}"
+  register: usb_disk_stat
+
+- block:
+    - name: Device path doesn't exist
+      debug: 
+        msg: "ERROR: {{ usb_disk_path }} is not a valid device path."
+
+    - meta: end_play
+  when: not usb_disk_stat.stat.exists
 
 - name: Get any active mounts
   shell:
