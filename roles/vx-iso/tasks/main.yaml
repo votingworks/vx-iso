@@ -1,5 +1,10 @@
 ---
 
+- name: Get stat for the original iso file
+  stat:
+    path: "{{ iso_file }}"
+  register: iso_stat
+
 - name: Create the removable device lookup dictionary
   set_fact:
     removable_devices: "{{ removable_devices | default({}) | combine({item : ansible_devices[item].model}) }}"
@@ -56,11 +61,6 @@
 - name: Copy the vx-iso image to the USB drive. This will take a few minutes
   command: dd if={{ iso_file }} of={{ usb_disk_path }} bs=4M 
   become: true
-
-- name: Get stat for the original iso file
-  stat:
-    path: "{{ iso_file }}"
-  register: iso_stat
 
 - name: Simple sanity check of the copied data
   command: cmp -n {{ iso_stat.stat.size }} {{ iso_file }} {{ usb_disk_path }}
