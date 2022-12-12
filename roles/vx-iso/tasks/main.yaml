@@ -4,6 +4,8 @@
   stat:
     path: "{{ iso_file }}"
   register: iso_stat
+  failed_when:
+    - not iso_stat.stat.exists
 
 - name: Create the removable device lookup dictionary
   set_fact:
@@ -39,18 +41,12 @@
   set_fact:
     usb_disk_path: "/dev/{{ device }}"
 
-- name: Confirm the device exists
+- name: Confirm the device exists and is removable
   stat:
     path: "{{ usb_disk_path }}"
   register: usb_disk_stat
-
-- block:
-    - name: Device path doesn't exist
-      debug: 
-        msg: "ERROR: {{ usb_disk_path }} is not a valid device path."
-
-    - meta: end_play
-  when: not usb_disk_stat.stat.exists
+  failed_when:
+    - not usb_disk_stat.stat.exists or ansible_devices[device].removable != "1"
 
 - name: Get any active mounts
   shell:
@@ -64,8 +60,7 @@
   with_items:
     - "{{ lsblk_result.stdout_lines }}"
  
-#-- USB device should not be mounted at this point
-- name: Copy the vx-iso image to the USB drive. This will take a few minutes
+- name: Copy the vx-iso image to the USB drive. This may take a minute
   command: dd if={{ iso_file }} of={{ usb_disk_path }} bs=4M 
   become: true
 
