@@ -1,0 +1,16 @@
+---
+
+- name: Eject the USB drive
+  become: true
+  command: eject {{ usb_disk_path }}
+
+- name: Sleep 2 seconds
+  command: sleep 2
+
+- name: Remount the USB drive
+  become: true
+  command: eject -t {{ usb_disk_path }}
+
+- name: Sleep 5 seconds to let the OS recognize the USB (Make this better)
+  command: sleep 5
+

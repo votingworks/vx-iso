@@ -1,3 +1,4 @@
 ---
 
-- import_tasks: vx-img.yaml
+#- import_tasks: vx-img.yaml
+- import_tasks: vx-iso.yaml

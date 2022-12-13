@@ -7,7 +7,7 @@
   failed_when:
     - not img_file_stat.stat.exists
 
-- name: Check for existing of keys archive
+- name: Check for existence of keys archive
   stat:
     path: "{{ keys_file }}"
   register: keys_file_stat
@@ -16,23 +16,24 @@
     - not keys_file_stat.stat.exists
 
 - import_tasks: usb_mgmt.yaml
- 
+
 - name: Create the keys partition
   community.general.parted:
     device: "{{ usb_disk_path }}"
     label: gpt
-    name: Keys
+    name: "Keys"
     number: 1
     part_end: 20MB
     fs_type: fat16
     state: present
+  register: parted_keys
 
 - name: Create the data partition
   community.general.parted:
     device: "{{ usb_disk_path }}"
     label: gpt
+    name: "Data"
     number: 2
-    name: Data
     state: present
     fs_type: ext4
     part_start: 20MB
@@ -42,51 +43,35 @@
   filesystem:
     fstype: vfat
     dev: "/dev/{{device}}1"
+    force: true
+  register: keys_fs
 
 - name: Put a filesystem on the Data partition
   filesystem:
     fstype: ext4
     dev: "/dev/{{device}}2"
+    force: true
 
-- name: Eject the USB drive
-  become: true
-  command: eject {{ usb_disk_path }}
+- import_tasks: remount_usb.yaml
 
-- name: Sleep 2 seconds
-  command: sleep 2
+- name: Mount the keys partition
+  mount:
+    path: /tmp/keys
+    src: "/dev/{{device}}1"
+    fstype: vfat
+    state: mounted
 
-- name: Remount the USB drive
-  become: true
-  command: eject -t {{ usb_disk_path }}
-
-- name: Sleep 5 seconds to let the OS recognize the USB (Make this better)
-  command: sleep 5
-
-- name: Get the Keys mount point
-  shell: 
-    cmd: lsblk -no mountpoint {{ usb_disk_path }} | sed '/^$/d' | grep Keys
-  register: lsblk_keys
-
-- name: Get the Data mount point
-  shell:
-    cmd: lsblk -no mountpoint {{ usb_disk_path }} | sed '/^$/d' | grep Data
-  register: lsblk_data
-
-- name: Set the Keys mount point var
-  set_fact:
-    keys_mount_dir: "{{ lsblk_keys.stdout }}"
-
-- name: Set the Data mount point var
-  set_fact:
-    data_mount_dir: "{{ lsblk_data.stdout }}"
-
-#-- For now, assuming mounts are good since lsblk returned data
-#-- TODO: Actually confirm they are good
+- name: Mount the data partition
+  mount:
+    path: /tmp/data
+    src: "/dev/{{device}}2"
+    fstype: ext4
+    state: mounted
 
 - name: Untar keys, if present
   unarchive:
     src: "{{ keys_file }}"
-    dest: "{{ keys_mount_dir }}"
+    dest: "/tmp/keys/"
     remote_src: no
   when: 
     - keys_file is defined
@@ -95,5 +80,14 @@
 - name: Copy the OS image to the Data partition. (This make take a few minutes.)
   copy:
     src: "{{ img_file }}"
-    dest: "{{ data_mount_dir }}"
+    dest: "/tmp/data/"
   
+- name: UnMount the keys partition
+  mount:
+    path: /tmp/keys
+    state: unmounted
+
+- name: UnMount the data partition
+  mount:
+    path: /tmp/data
+    state: unmounted

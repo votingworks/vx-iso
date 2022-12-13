@@ -1,5 +1,3 @@
 iso_file: /tmp/vxdev-iso.iso
 
 img_file: /home/amcmanus/code/119.2G-2022-09-08T01_19_23+00_00-vxdev.img.gz
-
-keys_file: /home/amcmanus/code/keys.tgz
