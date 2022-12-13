@@ -1,0 +1,76 @@
+---
+
+- name: Get stat for the original img file
+  stat:
+    path: "{{ img_file }}"
+  register: img_file_stat
+  failed_when:
+    - not img_file_stat.stat.exists
+
+- name: Check for existing of keys archive
+  stat:
+    path: "{{ keys_file }}"
+  register: keys_file_stat
+  when: keys_file is defined
+  failed_when:
+    - not keys_file_stat.stat.exists
+
+- import_tasks: usb_mgmt.yaml
+ 
+- name: Create the keys partition
+  community.general.parted:
+    device: "{{ usb_disk_path }}"
+    label: gpt
+    name: Keys
+    number: 1
+    part_end: 20MB
+    fs_type: fat16
+    state: present
+
+- name: Create the data partition
+  community.general.parted:
+    device: "{{ usb_disk_path }}"
+    label: gpt
+    number: 2
+    name: Data
+    state: present
+    fs_type: ext4
+    part_start: 20MB
+    part_end: "100%"
+  
+- name: Put a filesystem on the Keys partition
+  filesystem:
+    fstype: vfat
+    dev: "/dev/{{device}}1"
+
+- name: Put a filesystem on the Data partition
+  filesystem:
+    fstype: ext4
+    dev: "/dev/{{device}}2"
+
+- name: Eject the USB drive
+  become: true
+  command: eject {{ usb_disk_path }}
+
+- name: Sleep 2 seconds
+  command: sleep 2
+
+- name: Remount the USB drive
+  become: true
+  command: eject -t {{ usb_disk_path }}
+
+
+- meta: end_play
+
+- name: Copy the vx-iso image to the USB drive. This may take a minute
+  command: dd if={{ iso_file }} of={{ usb_disk_path }} bs=4M 
+  become: true
+
+- name: Simple sanity check of the copied data
+  command: cmp -n {{ img_file_stat.stat.size }} {{ img_file }} {{ usb_disk_path }}
+  become: true
+  register: cmp_result
+
+- name: Check if the copy was successful
+  debug:
+    msg: "Flashing the USB device was {{ (cmp_result.rc == 0) | ternary('successful', 'NOT SUCCESSFUL') }}"
