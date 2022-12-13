@@ -59,18 +59,41 @@
   become: true
   command: eject -t {{ usb_disk_path }}
 
+- name: Sleep 5 seconds to let the OS recognize the USB (Make this better)
+  command: sleep 5
 
-- meta: end_play
+- name: Get the Keys mount point
+  shell: 
+    cmd: lsblk -no mountpoint {{ usb_disk_path }} | sed '/^$/d' | grep Keys
+  register: lsblk_keys
 
-- name: Copy the vx-iso image to the USB drive. This may take a minute
-  command: dd if={{ iso_file }} of={{ usb_disk_path }} bs=4M 
-  become: true
+- name: Get the Data mount point
+  shell:
+    cmd: lsblk -no mountpoint {{ usb_disk_path }} | sed '/^$/d' | grep Data
+  register: lsblk_data
 
-- name: Simple sanity check of the copied data
-  command: cmp -n {{ img_file_stat.stat.size }} {{ img_file }} {{ usb_disk_path }}
-  become: true
-  register: cmp_result
+- name: Set the Keys mount point var
+  set_fact:
+    keys_mount_dir: "{{ lsblk_keys.stdout }}"
 
-- name: Check if the copy was successful
-  debug:
-    msg: "Flashing the USB device was {{ (cmp_result.rc == 0) | ternary('successful', 'NOT SUCCESSFUL') }}"
+- name: Set the Data mount point var
+  set_fact:
+    data_mount_dir: "{{ lsblk_data.stdout }}"
+
+#-- For now, assuming mounts are good since lsblk returned data
+#-- TODO: Actually confirm they are good
+
+- name: Untar keys, if present
+  unarchive:
+    src: "{{ keys_file }}"
+    dest: "{{ keys_mount_dir }}"
+    remote_src: no
+  when: 
+    - keys_file is defined
+    - keys_file_stat.stat.exists
+
+- name: Copy the OS image to the Data partition. (This make take a few minutes.)
+  copy:
+    src: "{{ img_file }}"
+    dest: "{{ data_mount_dir }}"
+  
