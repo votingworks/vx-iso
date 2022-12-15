@@ -1,5 +1,8 @@
 ---
 
+- name: Sleep 2 seconds
+  command: sleep 2
+
 - name: Eject the USB drive
   become: true
   command: eject {{ usb_disk_path }}

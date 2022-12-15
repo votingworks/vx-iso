@@ -1,6 +1,6 @@
 ---
 
-- name: Get stat for the original img file
+- name: Check for existence of img file
   stat:
     path: "{{ img_file }}"
   register: img_file_stat
@@ -17,22 +17,36 @@
 
 - import_tasks: usb_mgmt.yaml
 
+#-- We need to be sure there aren't existing partitions 
+#-- that might not work with our boot process
+- name: Get USB partition information
+  community.general.parted: 
+    device: "{{ usb_disk_path }}"
+    unit: MiB
+  register: usb_disk_info
+
+- name: Remove all partitions from USB
+  community.general.parted:
+    device: "{{ usb_disk_path }}"
+    number: '{{ item.num }}'
+    state: absent
+  loop: '{{ usb_disk_info.partitions }}'
+
 - name: Create the keys partition
   community.general.parted:
     device: "{{ usb_disk_path }}"
     label: gpt
-    name: "Keys"
+    name: 'Keys'
     number: 1
     part_end: 20MB
     fs_type: fat16
     state: present
-  register: parted_keys
 
 - name: Create the data partition
   community.general.parted:
     device: "{{ usb_disk_path }}"
     label: gpt
-    name: "Data"
+    name: 'Data'
     number: 2
     state: present
     fs_type: ext4
@@ -44,7 +58,6 @@
     fstype: vfat
     dev: "/dev/{{device}}1"
     force: true
-  register: keys_fs
 
 - name: Put a filesystem on the Data partition
   filesystem:
@@ -52,26 +65,30 @@
     dev: "/dev/{{device}}2"
     force: true
 
+#-- We rely heavily on the Keys and Data labels 
+#-- Create them explicitly since parted may not
+- name: Create the Keys label
+  become: true
+  command: fatlabel "/dev/{{ device }}1" Keys
+
+- name: Create the Data label
+  become: true
+  command: e2label "/dev/{{ device }}2" Data
+
 - import_tasks: remount_usb.yaml
 
-- name: Mount the keys partition
-  mount:
-    path: /tmp/keys
-    src: "/dev/{{device}}1"
-    fstype: vfat
-    state: mounted
+- name: Get the Keys mountpoint
+  command: lsblk -no mountpoint "/dev/{{ device }}1"
+  register: keys_mnt
 
-- name: Mount the data partition
-  mount:
-    path: /tmp/data
-    src: "/dev/{{device}}2"
-    fstype: ext4
-    state: mounted
+- name: Get the Data mountpoint
+  command: lsblk -no mountpoint "/dev/{{ device }}2"
+  register: data_mnt
 
-- name: Untar keys, if present
+- name: Extract keys to USB, if keys are present
   unarchive:
     src: "{{ keys_file }}"
-    dest: "/tmp/keys/"
+    dest: "{{ keys_mnt.stdout }}/"
     remote_src: no
   when: 
     - keys_file is defined
@@ -80,14 +97,4 @@
 - name: Copy the OS image to the Data partition. (This make take a few minutes.)
   copy:
     src: "{{ img_file }}"
-    dest: "/tmp/data/"
-  
-- name: UnMount the keys partition
-  mount:
-    path: /tmp/keys
-    state: unmounted
-
-- name: UnMount the data partition
-  mount:
-    path: /tmp/data
-    state: unmounted
+    dest: "{{ data_mnt.stdout }}/"
