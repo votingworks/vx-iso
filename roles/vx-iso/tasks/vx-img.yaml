@@ -87,11 +87,43 @@
   command: lsblk -no mountpoint "/dev/{{ device }}2"
   register: data_mnt
 
-- name: Extract keys to USB, if keys are present
-  unarchive:
-    src: "{{ keys_file }}"
-    dest: "{{ keys_mnt.stdout }}/"
-    remote_src: yes
+#-- This may seem excessive, but we need files at Keys/*
+#-- Since the tarball is manually created, let's find them, regardless of possible sub-directories
+#-- and put them in the right place
+- block:
+    - name: Create a tmp dir to extract keys to
+      tempfile:
+        state: directory
+        suffix: keys
+      register: tmp_keys_dir
+
+    - name: Extract keys
+      unarchive:
+        src: "{{ keys_file }}"
+        dest: "{{ tmp_keys_dir.path }}/"
+        remote_src: yes
+      register: keys_extracted
+
+    - name: Find the extracted files
+      find:
+        path: "{{ tmp_keys_dir.path }}/"
+        recurse: yes
+        file_type: file
+      register: tmp_key_files
+
+    - name: Copy the files to the USB
+      copy:
+        src: "{{ item.path }}"
+        dest: "{{ keys_mnt.stdout }}/"
+        remote_src: true
+      with_items:
+        - "{{ tmp_key_files.files }}"
+
+    - name: Remove the temp dir and contents
+      file:
+        path: "{{ tmp_keys_dir.path }}"
+        state: absent
+
   when: 
     - keys_file is defined
     - keys_file_stat.stat.exists
