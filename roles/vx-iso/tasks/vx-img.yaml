@@ -1,0 +1,100 @@
+---
+
+- name: Check for existence of img file
+  stat:
+    path: "{{ img_file }}"
+  register: img_file_stat
+  failed_when:
+    - not img_file_stat.stat.exists
+
+- name: Check for existence of keys archive
+  stat:
+    path: "{{ keys_file }}"
+  register: keys_file_stat
+  when: keys_file is defined
+  failed_when:
+    - not keys_file_stat.stat.exists
+
+- import_tasks: usb_mgmt.yaml
+
+#-- We need to be sure there aren't existing partitions 
+#-- that might not work with our boot process
+- name: Get USB partition information
+  community.general.parted: 
+    device: "{{ usb_disk_path }}"
+    unit: MiB
+  register: usb_disk_info
+
+- name: Remove all partitions from USB
+  community.general.parted:
+    device: "{{ usb_disk_path }}"
+    number: '{{ item.num }}'
+    state: absent
+  loop: '{{ usb_disk_info.partitions }}'
+
+- name: Create the keys partition
+  community.general.parted:
+    device: "{{ usb_disk_path }}"
+    label: gpt
+    name: 'Keys'
+    number: 1
+    part_end: 20MB
+    fs_type: fat16
+    state: present
+
+- name: Create the data partition
+  community.general.parted:
+    device: "{{ usb_disk_path }}"
+    label: gpt
+    name: 'Data'
+    number: 2
+    state: present
+    fs_type: ext4
+    part_start: 20MB
+    part_end: "100%"
+  
+- name: Put a filesystem on the Keys partition
+  filesystem:
+    fstype: vfat
+    dev: "/dev/{{device}}1"
+    force: true
+
+- name: Put a filesystem on the Data partition
+  filesystem:
+    fstype: ext4
+    dev: "/dev/{{device}}2"
+    force: true
+
+#-- We rely heavily on the Keys and Data labels 
+#-- Create them explicitly since parted may not
+- name: Create the Keys label
+  become: true
+  command: fatlabel "/dev/{{ device }}1" Keys
+
+- name: Create the Data label
+  become: true
+  command: e2label "/dev/{{ device }}2" Data
+
+- import_tasks: remount_usb.yaml
+
+- name: Get the Keys mountpoint
+  command: lsblk -no mountpoint "/dev/{{ device }}1"
+  register: keys_mnt
+
+- name: Get the Data mountpoint
+  command: lsblk -no mountpoint "/dev/{{ device }}2"
+  register: data_mnt
+
+- name: Extract keys to USB, if keys are present
+  unarchive:
+    src: "{{ keys_file }}"
+    dest: "{{ keys_mnt.stdout }}/"
+    remote_src: no
+  when: 
+    - keys_file is defined
+    - keys_file_stat.stat.exists
+
+- name: Copy the OS image to the Data partition. (This make take a few minutes.)
+  copy:
+    src: "{{ img_file }}"
+    dest: "{{ data_mnt.stdout }}/"

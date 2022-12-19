@@ -1,0 +1,8 @@
+---
+- name: Flash the vx-iso image to usb
+  become: true
+  hosts: localhost
+  tasks:
+    - import_role:
+        name: vx-iso
+        tasks_from: vx-iso
