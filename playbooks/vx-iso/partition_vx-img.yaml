@@ -1,0 +1,8 @@
+---
+- name: Only partition the USB drive
+  become: true
+  hosts: localhost
+  tasks:
+    - import_role:
+        name: vx-iso
+        tasks_from: partition-vx-img
