@@ -3,6 +3,7 @@
 - name: Check for existence of img file
   stat:
     path: "{{ img_file }}"
+    get_checksum: no
   register: img_file_stat
   failed_when:
     - not img_file_stat.stat.exists
@@ -10,6 +11,7 @@
 - name: Check for existence of keys archive
   stat:
     path: "{{ keys_file }}"
+    get_checksum: no
   register: keys_file_stat
   when: keys_file is defined
   failed_when:
@@ -89,7 +91,7 @@
   unarchive:
     src: "{{ keys_file }}"
     dest: "{{ keys_mnt.stdout }}/"
-    remote_src: no
+    remote_src: yes
   when: 
     - keys_file is defined
     - keys_file_stat.stat.exists
