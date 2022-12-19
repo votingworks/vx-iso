@@ -5,4 +5,4 @@
   tasks:
     - import_role:
         name: vx-iso
-        tasks_from: partition-vx-img
+        tasks_from: partition_vx-img
