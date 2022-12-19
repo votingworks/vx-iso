@@ -94,7 +94,10 @@
     - keys_file is defined
     - keys_file_stat.stat.exists
 
+#-- NOTE: remote_src needs to be true since we operate in localhost mode
+#--       This prevents an unnecessary temporary copy of the file being created
 - name: Copy the OS image to the Data partition. (This make take a few minutes.)
   copy:
     src: "{{ img_file }}"
     dest: "{{ data_mnt.stdout }}/"
+    remote_src: true
