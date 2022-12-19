@@ -19,7 +19,7 @@
 
 - import_tasks: usb_mgmt.yaml
 
-- import_tasks: partition-vx-img.yaml
+- import_tasks: partition_vx-img.yaml
 
 - import_tasks: remount_usb.yaml
 
