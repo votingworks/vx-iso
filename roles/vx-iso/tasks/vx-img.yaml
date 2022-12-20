@@ -19,63 +19,7 @@
 
 - import_tasks: usb_mgmt.yaml
 
-#-- We need to be sure there aren't existing partitions 
-#-- that might not work with our boot process
-- name: Get USB partition information
-  community.general.parted: 
-    device: "{{ usb_disk_path }}"
-    unit: MiB
-  register: usb_disk_info
-
-- name: Remove all partitions from USB
-  community.general.parted:
-    device: "{{ usb_disk_path }}"
-    number: '{{ item.num }}'
-    state: absent
-  loop: '{{ usb_disk_info.partitions }}'
-
-- name: Create the keys partition
-  community.general.parted:
-    device: "{{ usb_disk_path }}"
-    label: gpt
-    name: 'Keys'
-    number: 1
-    part_end: 20MB
-    fs_type: fat16
-    state: present
-
-- name: Create the data partition
-  community.general.parted:
-    device: "{{ usb_disk_path }}"
-    label: gpt
-    name: 'Data'
-    number: 2
-    state: present
-    fs_type: ext4
-    part_start: 20MB
-    part_end: "100%"
-  
-- name: Put a filesystem on the Keys partition
-  filesystem:
-    fstype: vfat
-    dev: "/dev/{{device}}1"
-    force: true
-
-- name: Put a filesystem on the Data partition
-  filesystem:
-    fstype: ext4
-    dev: "/dev/{{device}}2"
-    force: true
-
-#-- We rely heavily on the Keys and Data labels 
-#-- Create them explicitly since parted may not
-- name: Create the Keys label
-  become: true
-  command: fatlabel "/dev/{{ device }}1" Keys
-
-- name: Create the Data label
-  become: true
-  command: e2label "/dev/{{ device }}2" Data
+- import_tasks: partition_vx-img.yaml
 
 - import_tasks: remount_usb.yaml
 
@@ -87,11 +31,43 @@
   command: lsblk -no mountpoint "/dev/{{ device }}2"
   register: data_mnt
 
-- name: Extract keys to USB, if keys are present
-  unarchive:
-    src: "{{ keys_file }}"
-    dest: "{{ keys_mnt.stdout }}/"
-    remote_src: yes
+#-- This may seem excessive, but we need files at Keys/*
+#-- Since the tarball is manually created, let's find them, regardless of possible sub-directories
+#-- and put them in the right place
+- block:
+    - name: Create a tmp dir to extract keys to
+      tempfile:
+        state: directory
+        suffix: keys
+      register: tmp_keys_dir
+
+    - name: Extract keys
+      unarchive:
+        src: "{{ keys_file }}"
+        dest: "{{ tmp_keys_dir.path }}/"
+        remote_src: yes
+      register: keys_extracted
+
+    - name: Find the extracted files
+      find:
+        path: "{{ tmp_keys_dir.path }}/"
+        recurse: yes
+        file_type: file
+      register: tmp_key_files
+
+    - name: Copy the files to the USB
+      copy:
+        src: "{{ item.path }}"
+        dest: "{{ keys_mnt.stdout }}/"
+        remote_src: true
+      with_items:
+        - "{{ tmp_key_files.files }}"
+
+    - name: Remove the temp dir and contents
+      file:
+        path: "{{ tmp_keys_dir.path }}"
+        state: absent
+
   when: 
     - keys_file is defined
     - keys_file_stat.stat.exists
