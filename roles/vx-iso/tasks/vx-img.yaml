@@ -79,3 +79,6 @@
     src: "{{ img_file }}"
     dest: "{{ data_mnt.stdout }}/"
     remote_src: true
+
+- name: Sync the USB to ensure all data has been written. (This may take a few minutes.)
+  ansible.builtin.command: /usr/bin/sync
