@@ -14,6 +14,6 @@
   become: true
   command: eject -t {{ usb_disk_path }}
 
-- name: Sleep 5 seconds to let the OS recognize the USB (Make this better)
+- name: Sleep 5 seconds to let the OS recognize the USB
   command: sleep 5
 
