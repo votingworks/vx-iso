@@ -17,4 +17,5 @@ file_permissions=(
   ["/etc/shadow"]="0:0:400"
   ["/usr/share/vx-img/flash-image.sh"]="root:root:777"
   ["/usr/share/vx-img/scrape-image.sh"]="root:root:777"
+  ["/usr/share/vx-img/verify-hash.sh"]="root:root:777"
 )
