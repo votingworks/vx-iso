@@ -325,11 +325,6 @@ else
     ignore+=("${_diskname}")
 fi
 
-# Expected file naming scheme
-_match="^\d+(\.\d)*G-\d{4}-\d{2}-\d{2}T\d{2}(:|_|\s)\d{2}(:|_|\s)\d{2}(\+|-)\d{2}(:|_|\s)\d{2}-.*\.img\.(gz|lz4)$"
-_sizematch="^\d+(\.\d)*G"
-
-
 _path="/mnt"
 _supported=('gz' 'lz4')
 _hashash=0
@@ -338,17 +333,11 @@ _toflash=""
 _images=()
 _extensions=()
 
-_matches=()
-_matchextensions=()
-
 for f in "$_path"/*; do
     _filename="${f##*/}"
     _extension="${_filename##*.}"
 
-    if (echo "$_filename" | grep -qPo "$_match") ; then
-        _matches+=("$_filename")
-        _matchextensions+=("$_extension")
-    elif [[ "$_extension" == "gz" || "$_extension" == "lz4" ]]; then
+    if [[ "$_extension" == "gz" || "$_extension" == "lz4" ]]; then
         _images+=("$_filename")
         _extensions+=("$_extension")
     elif [[ "$_extension" == "sha256sum" ]]; then
@@ -356,54 +345,26 @@ for f in "$_path"/*; do
     fi
 done
 
-if [[ -z ${_matches[0]} &&  -z ${_images[0]} ]]; then
-    echo "Found no image to flash. Exiting..."
+if [[ -z ${_images[0]} ]]; then
+  echo "Found no image(s) to flash. Exiting..."
+  exit
+fi
+
+echo "Found the following images that might work."
+unset answer
+menu "${_images[@]}" "Please select an image to flash" 
+
+if [[ $err == 1 ]]; then
+    echo "Something went wrong, please try again."
     exit
 fi
 
-if [[ "${#_matches[@]}" == 1 ]]; then
-    echo "Found only one image in the right format."
-    _toflash=${_matches[0]}
-    _extension=${_matchextensions[0]}
-    _finalsize=$(echo "$_toflash" | grep -oP "$_sizematch")
-elif [[ -n ${_matches[0]} ]]; then
-    echo "Found several images that match the expected format."
-    unset answer
-    menu "${_matches[@]}" "Please select an image to flash" 
-
-    if [[ $err == 1 ]]; then
-        echo "Something went wrong, please try again."
-        exit
-    fi
-
-    if [[ -n $answer ]]; then
-        _toflash=${_matches[$answer-1]}
-    else
-        _toflash=${_matches[-1]}
-    fi
-    _extension=${_matchextensions[0]}
-    _finalsize=$(echo "$_toflash" | grep -oP "$_sizematch")
-elif [[ "${#_images[@]}" == 1 ]]; then
-    echo "Found only one image that might work."
-    _toflash=${_images[0]}
-    _extension=${_extensions[0]}
+if [[ -n $answer ]]; then
+    _toflash=${_images[$answer-1]}
+    _extension=${_extensions[$answer-1]}
 else
-    echo "Found the following images that might work."
-    unset answer
-    menu "${_images[@]}" "Please select an image to flash" 
-
-    if [[ $err == 1 ]]; then
-        echo "Something went wrong, please try again."
-        exit
-    fi
-
-    if [[ -n $answer ]]; then
-        _toflash=${_images[$answer-1]}
-        _extension=${_extensions[$answer-1]}
-    else
-        _toflash=${_images[-1]}
-        _extension=${_extensions[-1]}
-    fi
+    _toflash=${_images[-1]}
+    _extension=${_extensions[-1]}
 fi
 
 if [[ $_extension == "lz4" ]]; then
