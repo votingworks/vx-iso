@@ -494,6 +494,8 @@ umount /mnt
 #    fi
 #fi
 
+boot_label=$(basename ${_toflash%%.*})
+install_date=$(date +%Y%m%d)
 # If we're on a surface or a VxDev device, we don't do ESI. 
 if [[ $_surface == 1 || $vxdev == 1 ]]; then
     echo "adding a boot entry for Debian shim"
@@ -501,7 +503,7 @@ if [[ $_surface == 1 || $vxdev == 1 ]]; then
         --create \
         --disk "$_datadisk" \
         --part 1 \
-        --label "grub" \
+        --label "$boot_label - Installed $install_date" \
         --loader "\\EFI\\debian\\shimx64.efi" \
         --quiet
 else
@@ -510,7 +512,7 @@ else
         --create \
         --disk "$_datadisk" \
         --part 1 \
-        --label "VxLinux" \
+        --label "$boot_label - Installed $install_date" \
         --loader "\\EFI\\debian\\VxLinux-signed.efi" \
         --quiet
 fi
