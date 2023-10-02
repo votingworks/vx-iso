@@ -38,6 +38,7 @@ while true; do
       echo "Removing $boot_entry"
       boot_num=$(echo $boot_entry | awk '{print $1}' | sed -e s/Boot// | sed -e s/\*// )
       efibootmgr --delete-bootnum --bootnum $boot_num
+      echo && echo
     else
       echo "Not removing $boot_entry"
     fi
@@ -52,6 +53,7 @@ while true; do
     read confirm
 
     if [[ $confirm == "Y" || $confirm == "y" ]]; then
+      clear
       continue
     else
       exit 0
@@ -59,3 +61,5 @@ while true; do
   fi
 
 done
+
+exit 0
