@@ -7,10 +7,9 @@ efibootmgr -v | grep 'EFI\\debian' > $valid_entries
 
 if [[ ! -s $valid_entries ]]; then
   echo "There are no valid boot entries to remove."
-  sleep 5
+  sleep 3
   echo "Rebooting..."
-  exit 0
-  #reboot
+  reboot
 fi
 
 while true; do
@@ -47,7 +46,7 @@ while true; do
   efibootmgr -v | grep 'EFI\\debian' > $valid_entries
   if [[ ! -s $valid_entries ]]; then
     echo "There are no more valid boot entries to remove."
-    exit 0
+    break
   else
     echo "Would you like to remove another boot entry? y/n"
     read confirm
@@ -56,10 +55,12 @@ while true; do
       clear
       continue
     else
-      exit 0
+      break
     fi
   fi
 
 done
 
-exit 0
+echo "Rebooting..."
+sleep 3
+reboot
