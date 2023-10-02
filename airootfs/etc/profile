@@ -56,4 +56,6 @@ if [[ $SELENTRY == *"02-archiso-x86_64-ram-linux.conf"* ]]; then
     /usr/share/vx-img/flash-image.sh
 elif [[ $SELENTRY == *"03-archiso-x86_64-ram-linux.conf"* ]]; then 
     /usr/share/vx-img/scrape-image.sh
+elif [[ $SELENTRY == *"04-archiso-x86_64-ram-linux.conf"* ]]; then 
+    /usr/share/vx-img/verify-hash.sh
 fi
