@@ -325,9 +325,6 @@ else
     ignore+=("${_diskname}")
 fi
 
-_sizematch="^\d+(\.\d)*G"
-
-
 _path="/mnt"
 _supported=('gz' 'lz4')
 _hashash=0
