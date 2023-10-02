@@ -18,4 +18,5 @@ file_permissions=(
   ["/usr/share/vx-img/flash-image.sh"]="root:root:777"
   ["/usr/share/vx-img/scrape-image.sh"]="root:root:777"
   ["/usr/share/vx-img/verify-hash.sh"]="root:root:777"
+  ["/usr/share/vx-img/delete-boot-entries.sh"]="root:root:777"
 )
