@@ -17,13 +17,20 @@ The iso file will be created in the `out/` directory. After creating, you can us
 # Setting up USB drives for use with vx-iso and OS images.
 ## USB Requirements
 
+You should use a Linux OS (Debian 12 is our current standard) for any of the below steps.
+
 You'll need two USB drives: one for the vx-iso created by `mkarchiso` and one for the OS image and optional secure boot keys. We recommend a fast, 64GB+ USB drive for the OS image and keys. 
 
 ## Install Ansible
 ```
-sudo apt install -y python3.9 python3-pip
-sudo python3.9 -m pip install ansible
+sudo ./scripts/install-ansible.sh
 ```
+
+On Debian 12, you will need to activate the ansible virtualenv:
+```
+source .virtualenv/ansible/bin/activate
+```
+
 You can confirm Ansible is installed by running: `ansible --version`
 
 ## Installing the .iso file

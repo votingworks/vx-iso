@@ -14,7 +14,7 @@ local_user_home_dir=$( getent passwd "${local_user}" | cut -d: -f6 )
 
 if [[ ! -f .virtualenv/ansible/bin/activate ]]; then
   echo "Installing Ansible..."
-  sudo ./scripts/install-ansible.sh online
+  sudo ./scripts/install-ansible.sh
   echo "Ansible installation is complete."
 fi
 
