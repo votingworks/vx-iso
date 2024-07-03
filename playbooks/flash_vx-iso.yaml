@@ -1,5 +1,0 @@
----
-- name: flash vx-iso to usb
-  hosts: localhost
-  roles:
-    - vx-iso

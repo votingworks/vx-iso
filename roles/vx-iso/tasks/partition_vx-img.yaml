@@ -3,6 +3,9 @@
 - import_tasks: usb_mgmt.yaml
   when: usb_disk_info is not defined
 
+- name: Ensure the USB drive has been recognized
+  ansible.builtin.command: eject -t {{ usb_disk_path }}
+
 #-- We need to be sure there aren't existing partitions 
 #-- that might not work with our boot process
 - name: Get USB partition information
@@ -11,54 +14,66 @@
     unit: MiB
   register: usb_disk_info
 
-- name: Remove all partitions from USB
-  community.general.parted:
-    device: "{{ usb_disk_path }}"
-    number: '{{ item.num }}'
-    state: absent
-  loop: '{{ usb_disk_info.partitions }}'
+#-- Only re-partition if the existing scheme doesn't match our expected scheme
+#-- You can see the conditions at the end of this block in the large when conditional
+- block:
 
-- name: Create the keys partition
-  community.general.parted:
-    device: "{{ usb_disk_path }}"
-    label: gpt
-    name: 'Keys'
-    number: 1
-    part_end: 20MB
-    fs_type: fat16
-    state: present
+  - name: Remove all partitions from USB
+    community.general.parted:
+      device: "{{ usb_disk_path }}"
+      number: '{{ item.num }}'
+      state: absent
+    loop: '{{ usb_disk_info.partitions }}'
 
-- name: Create the data partition
-  community.general.parted:
-    device: "{{ usb_disk_path }}"
-    label: gpt
-    name: 'Data'
-    number: 2
-    state: present
-    fs_type: ext4
-    part_start: 20MB
-    part_end: "100%"
+  - name: Create the keys partition
+    community.general.parted:
+      device: "{{ usb_disk_path }}"
+      label: gpt
+      name: 'Keys'
+      number: 1
+      part_end: 20MB
+      fs_type: fat16
+      state: present
+
+  - name: Create the data partition
+    community.general.parted:
+      device: "{{ usb_disk_path }}"
+      label: gpt
+      name: 'Data'
+      number: 2
+      state: present
+      fs_type: ext4
+      part_start: 20MB
+      part_end: "100%"
   
-- name: Put a filesystem on the Keys partition
-  filesystem:
-    fstype: vfat
-    dev: "/dev/{{device}}1"
-    force: true
+  - name: Put a filesystem on the Keys partition
+    community.general.filesystem:
+      fstype: vfat
+      dev: "/dev/{{device}}1"
+      force: true
 
-- name: Put a filesystem on the Data partition
-  filesystem:
-    fstype: ext4
-    dev: "/dev/{{device}}2"
-    force: true
+  - name: Put a filesystem on the Data partition
+    community.general.filesystem:
+      fstype: ext4
+      dev: "/dev/{{device}}2"
+      force: true
 
-#-- We rely heavily on the Keys and Data labels 
-#-- Create them explicitly since parted may not
-- name: Create the Keys label
-  become: true
-  command: fatlabel "/dev/{{ device }}1" Keys
+  #-- We rely heavily on the Keys and Data labels
+  #-- Create them explicitly since parted may not
+  - name: Create the Keys label
+    ansible.builtin.command: fatlabel "/dev/{{ device }}1" Keys
+    become: true
 
-- name: Create the Data label
-  become: true
-  command: e2label "/dev/{{ device }}2" Data
+  - name: Create the Data label
+    ansible.builtin.command: e2label "/dev/{{ device }}2" Data
+    become: true
+
+  when: usb_disk_info.partitions | length == 0 or
+        usb_disk_info.partitions[0].name != 'Keys' or
+        usb_disk_info.partitions[0].fstype != 'fat16' or
+        usb_disk_info.partitions[0].num != 1 or
+        usb_disk_info.partitions[1].name != 'Data' or
+        usb_disk_info.partitions[1].fstype != 'ext4' or
+        usb_disk_info.partitions[1].num != 2
 
 - import_tasks: remount_usb.yaml

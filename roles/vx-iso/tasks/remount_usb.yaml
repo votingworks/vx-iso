@@ -1,19 +1,72 @@
 ---
 
-- name: Sleep 2 seconds
-  command: sleep 2
+- name: Get current USB mounts
+  ansible.builtin.shell:
+    cmd: lsblk -no mountpoint {{ usb_disk_path }} | sed '/^$/d'
+  register: current_mounts
 
 - name: Eject the USB drive
+  ansible.builtin.command: eject {{ usb_disk_path }}
   become: true
-  command: eject {{ usb_disk_path }}
 
-- name: Sleep 2 seconds
-  command: sleep 2
+- name: Wait for the USB to be successfully ejected
+  ansible.builtin.wait_for:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ current_mounts.stdout_lines }}"
 
 - name: Remount the USB drive
+  ansible.builtin.command: eject -t {{ usb_disk_path }}
   become: true
-  command: eject -t {{ usb_disk_path }}
 
-- name: Sleep 5 seconds to let the OS recognize the USB
-  command: sleep 5
+- name: Wait for the USB to be successfully mounted
+  ansible.builtin.wait_for:
+    path: "{{ item }}"
+    state: present
+  loop: "{{ current_mounts.stdout_lines }}"
 
+- name: If the USB was not mounted, explicitly sleep 5 more seconds
+  ansible.builtin.command: sleep 5
+  when: current_mounts.stdout == ""
+
+- name: Get updated USB mounts
+  ansible.builtin.shell:
+    cmd: lsblk -no mountpoint {{ usb_disk_path }} | sed '/^$/d'
+  register: updated_mounts
+
+#-- If the usb drive is not mounted, manually mount both partitions
+- block:
+    - ansible.builtin.set_fact:
+        tmp_keys_mnt: "/tmp/vx-iso-Keys"
+
+    - ansible.builtin.set_fact:
+        tmp_data_mnt: "/tmp/vx-iso-Data"
+
+    - name: Create a tmp mount for the Keys directory
+      ansible.builtin.file:
+        state: directory
+        path: "{{ tmp_keys_mnt }}"
+        mode: "0755"
+
+    - name: Create a tmp mount for the Data directory
+      ansible.builtin.file:
+        state: directory
+        path: "{{ tmp_data_mnt }}"
+        mode: "0755"
+
+    - name: Mount partition 1 (keys)
+      ansible.posix.mount:
+        src: "{{ usb_disk_path }}1"
+        path: "{{ tmp_keys_mnt }}"
+        state: ephemeral
+        fstype: vfat
+
+    - name: Mount partition 2 (data)
+      ansible.posix.mount:
+        src: "{{ usb_disk_path }}2"
+        path: "{{ tmp_data_mnt }}"
+        state: ephemeral
+        fstype: ext4
+
+  when:
+    updated_mounts.stdout == ""
