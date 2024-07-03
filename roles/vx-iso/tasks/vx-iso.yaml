@@ -1,7 +1,7 @@
 ---
 
 - name: Get stat for the original iso file
-  stat:
+  ansible.builtin.stat:
     path: "{{ iso_file }}"
   register: iso_stat
   failed_when:
@@ -10,14 +10,14 @@
 - import_tasks: usb_mgmt.yaml
  
 - name: Copy the vx-iso image to the USB drive. This may take a minute
-  command: dd if={{ iso_file }} of={{ usb_disk_path }} bs=4M 
+  ansible.builtin.command: dd if={{ iso_file }} of={{ usb_disk_path }} bs=4M
   become: true
 
 - name: Simple sanity check of the copied data
-  command: cmp -n {{ iso_stat.stat.size }} {{ iso_file }} {{ usb_disk_path }}
+  ansible.builtin.command: cmp -n {{ iso_stat.stat.size }} {{ iso_file }} {{ usb_disk_path }}
   become: true
   register: cmp_result
 
 - name: Check if the copy was successful
-  debug:
+  ansible.builtin.debug:
     msg: "Flashing the USB device was {{ (cmp_result.rc == 0) | ternary('successful', 'NOT SUCCESSFUL') }}"

@@ -1,50 +1,31 @@
-# vx-iso
-This repo contains the configuration necessary for creating an Arch Linux-based install stick that can be used to write verified VotingWorks images to hardware. **NOTE** this must be run on an Arch Linux system, as the `mkarchiso` program depends on having Arch utilities like `pacstrap` available to it. First, install `mkarchiso` and `git`: 
-
-```
-sudo pacman -S archiso git
-```
-
-Clone the repo and build the image:
-```bash
-git clone https://github.com/votingworks/vx-iso
-cd vx-iso
-sudo mkarchiso -v -w /tmp/vxiso-tmp -o out .
-```
-
-The iso file will be created in the `out/` directory. After creating, you can use our Ansible playbooks to automatically prepare each USB drive for use. See below for those steps.
-
 # Setting up USB drives for use with vx-iso and OS images.
 ## USB Requirements
 
-You should use a Linux OS (Debian 12 is our current standard) for any of the below steps.
+You should use a Debian 11 or 12 OS for the below steps.
 
-You'll need two USB drives: one for the vx-iso created by `mkarchiso` and one for the OS image and optional secure boot keys. We recommend a fast, 64GB+ USB drive for the OS image and keys. 
+There are two types of USB drives used for installing VotingWorks images.
+1. An install drive. 
+2. An image (with optional keys) drive.
 
-## Install Ansible
-```
-sudo ./scripts/install-ansible.sh
-```
+We recommend a fast, 64GB+ USB drive for the image drive.
 
-On Debian 12, you will need to activate the ansible virtualenv:
-```
-source .virtualenv/ansible/bin/activate
-```
-
-You can confirm Ansible is installed by running: `ansible --version`
-
-## Installing the .iso file
-1. Ensure your USB drive is inserted
+## Creating an install drive
+1. Ensure your USB drive is inserted and accessible to the VM or system you are using
 2. Run: 
-```sudo ansible-playbook playbooks/vx-iso/flash_vx-iso.yaml -e "iso_file=/path/to/your/iso"```
+```./scripts/create-install-drive.sh /path/to/install.iso```
 3. Select your USB drive from the menu
 4. Once the .iso file is successfully copied to the USB, you will see a success message.
 
-## Installing the img (and optional keys) file
-1. Ensure your fast, 64GB+ USB drive is inserted. NOTE: This should NOT be the same USB used for the .iso file.
-2. Run: 
-```sudo ansible-playbook playbooks/vx-iso/flash_vx-img.yaml -e "img_file=/path/to/your/img" -e "keys_file=/path/to/your/keys"```
+## Creating an image (with optional secure boot keys) drive
+1. Ensure your fast, 64GB+ USB drive is inserted and accessible to the VM or system you are using. NOTE: This should NOT be the same USB used for the .iso file.
+2. If you are creating a drive with an image AND secure boot keys: 
+```./scripts/copy-image.sh -i /path/to/img.lz4 -k /path/to/keys.tgz```
+   
+   If you are creating a drive with only an image:
+```./scripts/copy-image.sh -i /path/to/img.lz4```
+
 3. Select your USB drive from the menu
 4. Wait for the img to be copied. If you provided keys, they will also be extracted onto the drive.
  
-
+# Creating a vx-iso installer image
+TODO: This requires a significant update due to implementing secure boot support.

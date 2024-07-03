@@ -1,14 +1,14 @@
 ---
 
 - name: Create the removable device lookup dictionary
-  set_fact:
+  ansible.builtin.set_fact:
     removable_devices: "{{ removable_devices | default({}) | combine({item : ansible_devices[item].model}) }}"
   when: ansible_devices[item].removable == "1"
   with_items:
     - "{{ ansible_devices.keys() }}"
 
 - name: Create the device menu
-  set_fact:
+  ansible.builtin.set_fact:
     device_menu: |
       {{ device_menu | default('') }}
       Name: {{ item.key }} ({{ item.value }})
@@ -17,7 +17,7 @@
 
 - block:
     - name: Prompt for device to flash
-      pause:
+      ansible.builtin.pause:
         prompt: |
           We found the following removable devices:
           {{ device_menu }}
@@ -25,29 +25,29 @@
       register: device_name
  
     - name: Set device var
-      set_fact: 
+      ansible.builtin.set_fact:
         device: "{{ device_name.user_input }}"
 
   when: device is not defined
 
 - name: Set USB disk path var
-  set_fact:
+  ansible.builtin.set_fact:
     usb_disk_path: "/dev/{{ device }}"
 
 - name: Confirm the device exists and is removable
-  stat:
+  ansible.builtin.stat:
     path: "{{ usb_disk_path }}"
   register: usb_disk_stat
   failed_when:
     - not usb_disk_stat.stat.exists or ansible_devices[device].removable != "1"
 
 - name: Get any active mounts
-  shell:
+  ansible.builtin.shell:
     cmd: lsblk -no mountpoint {{ usb_disk_path }} | sed '/^$/d'
   register: lsblk_result
 
 - name: Unmount the USB drive
-  mount: 
+  ansible.posix.mount:
     path: "{{ item }}"
     state: unmounted
   with_items:

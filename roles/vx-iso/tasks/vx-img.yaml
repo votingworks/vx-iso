@@ -1,7 +1,7 @@
 ---
 
 - name: Check for existence of img file
-  stat:
+  ansible.builtin.stat:
     path: "{{ img_file }}"
     get_checksum: no
   register: img_file_stat
@@ -9,7 +9,7 @@
     - not img_file_stat.stat.exists
 
 - name: Check for existence of keys archive
-  stat:
+  ansible.builtin.stat:
     path: "{{ keys_file }}"
     get_checksum: no
   register: keys_file_stat
@@ -21,14 +21,12 @@
 
 - import_tasks: partition_vx-img.yaml
 
-- import_tasks: remount_usb.yaml
-
 - name: Get the Keys mountpoint
-  command: lsblk -no mountpoint "/dev/{{ device }}1"
+  ansible.builtin.command: lsblk -no mountpoint "/dev/{{ device }}1"
   register: keys_mnt
 
 - name: Get the Data mountpoint
-  command: lsblk -no mountpoint "/dev/{{ device }}2"
+  ansible.builtin.command: lsblk -no mountpoint "/dev/{{ device }}2"
   register: data_mnt
 
 #-- This may seem excessive, but we need files at Keys/*
@@ -36,27 +34,27 @@
 #-- and put them in the right place
 - block:
     - name: Create a tmp dir to extract keys to
-      tempfile:
+      ansible.builtin.tempfile:
         state: directory
         suffix: keys
       register: tmp_keys_dir
 
     - name: Extract keys
-      unarchive:
+      ansible.builtin.unarchive:
         src: "{{ keys_file }}"
         dest: "{{ tmp_keys_dir.path }}/"
         remote_src: yes
       register: keys_extracted
 
     - name: Find the extracted files
-      find:
+      ansible.builtin.find:
         path: "{{ tmp_keys_dir.path }}/"
         recurse: yes
         file_type: file
       register: tmp_key_files
 
     - name: Copy the files to the USB
-      copy:
+      ansible.builtin.copy:
         src: "{{ item.path }}"
         dest: "{{ keys_mnt.stdout }}/"
         remote_src: true
@@ -64,7 +62,7 @@
         - "{{ tmp_key_files.files }}"
 
     - name: Remove the temp dir and contents
-      file:
+      ansible.builtin.file:
         path: "{{ tmp_keys_dir.path }}"
         state: absent
 
@@ -74,8 +72,8 @@
 
 #-- NOTE: remote_src needs to be true since we operate in localhost mode
 #--       This prevents an unnecessary temporary copy of the file being created
-- name: Copy the OS image to the Data partition. (This make take a few minutes.)
-  copy:
+- name: Copy the OS image to the Data partition. (This may take a few minutes.)
+  ansible.builtin.copy:
     src: "{{ img_file }}"
     dest: "{{ data_mnt.stdout }}/"
     remote_src: true
