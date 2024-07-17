@@ -78,5 +78,8 @@
     dest: "{{ data_mnt.stdout }}/"
     remote_src: true
 
+- name: Work around ext4 automount permissions
+  ansible.builtin.command: chmod -R 777 "{{ data_mnt.stdout }}"
+
 - name: Sync the USB to ensure all data has been written. (This may take a few minutes.)
   ansible.builtin.command: /usr/bin/sync
