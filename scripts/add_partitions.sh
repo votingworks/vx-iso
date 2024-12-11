@@ -1,6 +1,13 @@
 #!/bin/bash
 #
 usb_path=$1
+
+if [[ -z "$usb_path" ]]; then
+  echo "Usage: $0 /dev/sdX"
+  echo "You must specify the device path to the USB, e.g. /dev/sda"
+  exit 1
+fi
+
 keys_size_mb=20
 sector_size=$(cat /sys/block/$(basename $usb_path)/queue/hw_sector_size)
 keys_sectors=$((keys_size_mb * 1024 * 1024 / sector_size))
