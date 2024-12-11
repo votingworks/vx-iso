@@ -31,7 +31,9 @@ We recommend a fast, 64GB+ USB drive for the image drive.
 TODO: This requires a significant update due to implementing secure boot support.
 
 # Creating a vx-iso install USB with support for Keys and Data
-TODO: This is an early proof-of-concept, will need more work. It is intended for those more comfortable with manual commands, it doesn't have error checking, could run into issues, etc... Use at your own risk (there is no real risk beyond having to recreate a vx-iso USB)
+TODO: This is an early proof-of-concept, will need more work. It is intended for those more comfortable with manual commands, it doesn't have error checking, could run into issues, etc... Use at your own risk.
+
+IMPORTANT: Please use the right device path. Running this against your local system drive would probably ruin your day if it somehow proceeded. There is only minimal error checking in place for now.
 
 Assuming you already have a working vx-iso (Arch Linux version) USB, attach it to a Linux system (has only been tested on a Debian 12 system so far). Use the `lsblk` command to determine the device path for the USB, e.g. `/dev/sda`
 

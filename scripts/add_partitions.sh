@@ -8,6 +8,14 @@ if [[ -z "$usb_path" ]]; then
   exit 1
 fi
 
+is_removable=$(cat /sys/block/$(basename $usb_path)/removable)
+
+if [[ $is_removable == 0 ]]; then
+  echo "The device path you specified is not a removable device."
+  echo "Please check the device path ($usb_path) you provided."
+  exit 2
+fi
+
 keys_size_mb=20
 sector_size=$(cat /sys/block/$(basename $usb_path)/queue/hw_sector_size)
 keys_sectors=$((keys_size_mb * 1024 * 1024 / sector_size))
@@ -38,10 +46,10 @@ cat <<EOF > /tmp/partition.sfdisk
 $(cat /tmp/sfdisk.dump)
 
 # Add keys partition
-/dev/sda3 : start=$keys_start, size=$keys_sectors, type=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7, name="Keys"
+${usb_path}3 : start=$keys_start, size=$keys_sectors, type=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7, name="Keys"
 
 # Add data partition
-/dev/sda4 : start=$data_start, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, name="Data"
+${usb_path}4 : start=$data_start, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, name="Data"
 
 EOF
 
