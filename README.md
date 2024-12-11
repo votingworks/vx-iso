@@ -29,3 +29,16 @@ We recommend a fast, 64GB+ USB drive for the image drive.
  
 # Creating a vx-iso installer image
 TODO: This requires a significant update due to implementing secure boot support.
+
+# Creating a vx-iso install USB with support for Keys and Data
+TODO: This is an early proof-of-concept, will need more work. It is intended for those more comfortable with manual commands, it doesn't have error checking, could run into issues, etc... Use at your own risk (there is no real risk beyond having to recreate a vx-iso USB)
+
+Assuming you already have a working vx-iso (Arch Linux version) USB, attach it to a Linux system (has only been tested on a Debian 12 system so far). Use the `lsblk` command to determine the device path for the USB, e.g. `/dev/sda`
+
+As root (or via sudo), run 
+```./scripts/arch_add_partitions.sh /dev/sdX``` 
+Replace `/dev/sdX` with the appropriate path to your USB drive. 
+
+After the script completes, your USB drive will have two new partitions: Keys and Data. You can use these just like the current data USB. 
+
+Please note: Current tools (scripts and ansible playbooks) do not yet support this single USB approach. You will need to copy keys / images manually. 
