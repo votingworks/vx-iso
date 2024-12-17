@@ -158,23 +158,40 @@ function part_select() {
 # text. See votingworks/vx-iso#21.
 sleep 1
 clear
+
 ## Detect if this disk already has VotingWorks data on it and copy the machine config
-#vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
-#
-#if [[ -n $vg ]]; then
-#
-#    dir=$(find "/dev/$vg" -name "var")
-#    mount "$dir" /mnt
-#
-#    if [ -d "/mnt/vx/config" ]; then
-#        echo "Found /vx/config to copy. Press Return to continue."
-#        read -r
-#        tar -czvf vx-config.tar.gz /mnt/vx/config
-#    fi
-#
-#    umount /mnt
-#fi
-#clear
+vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
+
+if [[ -n $vg && $vg == "Vx-vg" ]]; then
+
+    # Activate the volume group
+    vgchange -ay $vg
+    
+    # Could just hardcode this?
+    dir=$(find "/dev/$vg" -name "var_encrypted")
+
+    # Open the encrypted volume
+    cryptsetup open $dir var_decrypted 
+
+    mount /dev/mapper/var_decrypted /mnt
+
+    if [ -d "/mnt/vx/config" ]; then
+        echo "Found /vx/config to copy. Press Return to continue."
+        read -r
+        tar -czvf vx-config.tar.gz /mnt/vx/config
+    fi
+
+    umount /mnt
+
+    # Close the encrypted volume
+    cryptsetup close var_decrypted
+
+    # Deactivate the volume group
+    vgchange -an Vx-vg
+
+    sleep 10
+fi
+clear
 
 function flash_keys() {
     # use dmidecode to detect if we're on a Surface Go
@@ -438,28 +455,52 @@ fi
 umount /mnt
 
 ## Now that we've flashed the image, put /vx/config back if it exists.
-#if [ -e "vx-config.tar.gz" ]; then
-#    vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
-#
-#    if [[ -n $vg ]]; then
-#        dir=$(find "/dev/$vg" -name "var")
-#        mount "$dir" /mnt
-#
-#        if [ -d "/mnt/vx/config" ]; then
-#            tar --extract --file=vx-config.tar.gz --gzip --verbose --keep-directory-symlink -C /
-#        fi
-#
-#        umount /mnt
-#        echo "Replacing /vx/config was successful. Press any key to continue."
-#        read -r
-#    fi
-#fi
+if [ -e "vx-config.tar.gz" ]; then
+    vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
+
+    if [[ -n $vg && $vg == "Vx-vg" ]]; then
+        # Activate the volume group
+        vgchange -ay $vg
+
+        dir=$(find "/dev/$vg" -name "var_encrypted")
+	echo "insecure" | cryptsetup open $dir var_decrypted
+
+        mount /dev/mapper/var_decrypted /mnt
+
+        if [ -d "/mnt/vx/config" ]; then
+            tar --extract --file=vx-config.tar.gz --gzip --verbose --keep-directory-symlink -C /
+        fi
+
+        umount /mnt
+	cryptsetup close var_decrypted
+	vgchange -an $vg
+        echo "Replacing /vx/config was successful. Press any key to continue."
+        read -r
+    fi
+fi
+
+# Assumptions are made about our datadisk
+# partition "1" is the boot partition
+# partition "3" is the LVM partition
+datadisk_suffix=$(echo $_datadisk | cut -d'/' -f3)
+flashed_root_partition=$(lsblk -l | grep $datadisk_suffix | grep part | awk '{print $1}' | grep '1$')
+
+# Determine if this is a signed image or not
+mount "/dev/${flashed_root_partition}" /mnt
+efi_loader="\\EFI\\debian\\shimx64.efi"
+if [[ -f "/mnt/EFI/debian/VxLinux-signed.efi" ]]; then
+  efi_loader="\\EFI\\debian\\VxLinux-signed.efi"
+fi
+umount /mnt
+
+# Before modifying the boot order, get the existing entries
+efibootmgr -v | grep 'EFI\\debian' > /tmp/current_boot
 
 boot_label=$(basename ${_toflash%%.*})
 install_date=$(date +%Y%m%d)
 # If we're on a surface or a VxDev device, we don't do ESI. 
 if [[ $_surface == 1 || $vxdev == 1 ]]; then
-    echo "adding a boot entry for Debian shim"
+    echo "adding a boot entry for Surface Go / VxDev"
     efibootmgr \
         --create \
         --disk "$_datadisk" \
@@ -468,15 +509,29 @@ if [[ $_surface == 1 || $vxdev == 1 ]]; then
         --loader "\\EFI\\debian\\shimx64.efi" \
         --quiet
 else
-    echo "adding a boot entry for VxLinux"
+    echo "adding the appropriate boot entry"
     efibootmgr \
         --create \
         --disk "$_datadisk" \
         --part 1 \
         --label "$boot_label - Installed $install_date" \
-        --loader "\\EFI\\debian\\VxLinux-signed.efi" \
+        --loader "$efi_loader" \
         --quiet
 fi
+
+# Get the updated set of boot entries
+efibootmgr -v | grep 'EFI\\debian' > /tmp/new_boot
+
+new_entry=$(diff /tmp/current_boot /tmp/new_boot | grep 'Boot' | cut -d' ' -f2 | cut -d'*' -f1 | sed -e 's/Boot//')
+
+# Get the current USB entry
+current_id=$(efibootmgr | grep BootCurrent | cut -d':' -f2 | xargs)
+
+# This likely needs to be customized based on hardware/bios
+# but start by trying to make the boot order: usb --> disk
+efibootmgr -o ${current_id},${new_entry}
+
+sleep 30
 
 clear
 echo "The flash was successful!"
