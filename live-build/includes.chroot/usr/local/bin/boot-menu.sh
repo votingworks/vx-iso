@@ -1,6 +1,9 @@
 #!/bin/bash
 #
 
+# Don't allow ctrl+ commands that could break out to a console
+trap '' SIGINT SIGTSTP SIGTERM
+
 clear
 
 while true; do

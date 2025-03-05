@@ -1,3 +1,2 @@
-# mkosi output artifacts
-mkosi/output/
-mkosi.cache/
+# live-build tmp build dir
+live-build/tmp-build-dir/

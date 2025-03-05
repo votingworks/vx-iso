@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+trap '' SIGINT SIGTSTP SIGTERM
+
 set -euo pipefail
 
 echo "TODO: Implement verify hash generation from vx-iso against installed image"

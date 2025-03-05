@@ -2,14 +2,16 @@
 # Provide the ability to delete old/existing boot entries
 #
 
+trap '' SIGINT SIGTSTP SIGTERM
+
 valid_entries='/tmp/valid_entries'
 efibootmgr -v | grep 'EFI\\debian' > $valid_entries
 
 if [[ ! -s $valid_entries ]]; then
   echo "There are no valid boot entries to remove."
+  echo "Returning to the vx-iso menu."
   sleep 3
-  echo "Rebooting..."
-  reboot
+  exit 0
 fi
 
 while true; do
@@ -61,6 +63,7 @@ while true; do
 
 done
 
-echo "Rebooting..."
+echo "Returning to the vx-iso menu..."
 sleep 3
-reboot
+
+exit 0

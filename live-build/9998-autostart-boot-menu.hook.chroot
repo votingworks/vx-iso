@@ -3,5 +3,5 @@
 # make sure the menu is executable
 chmod +x /usr/local/bin/boot-menu.sh
 
-# automatically start it for the root user
+# automatically start it for the user
 echo '/usr/local/bin/boot-menu.sh' >> /root/.profile

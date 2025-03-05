@@ -1,5 +1,7 @@
 #!/bin/bash
 
+trap '' SIGINT SIGTSTP SIGTERM
+
 _disk="/dev/nvme0n1"
 _diskname=""
 
