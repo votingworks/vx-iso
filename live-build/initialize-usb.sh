@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [[ $EUID -ne 0 ]]; then
+  echo "Please run this script as root via: sudo $0"
+  exit 1
+fi
+
 usb_path=$1
 
 if [[ -z "$usb_path" ]]; then
@@ -13,7 +18,7 @@ is_removable=$(cat /sys/block/$(basename $usb_path)/removable)
 if [[ $is_removable == 0 ]]; then
   echo "The device path you specified is not a removable device."
   echo "Please check the device path ($usb_path) you provided."
-  exit 2
+  exit 1
 fi
 
 # In case the drive automounted, unmount

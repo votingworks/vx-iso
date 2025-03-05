@@ -12,4 +12,6 @@ cp ../vxiso.list.chroot config/package-lists/
 
 cp -r ../includes.chroot config/
 
+sudo lb build
+
 exit 0
