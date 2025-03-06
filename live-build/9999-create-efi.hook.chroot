@@ -36,6 +36,6 @@ objcopy \
   --add-section .cmdline="/tmp/cmdline" --change-section-vma .cmdline=$(printf 0x%x $cmdline_offs) \
   --add-section .linux="${vmlinuz_file}" --change-section-vma .linux=$(printf 0x%x $linux_offs)  \
   --add-section .initrd="${initrd_file}" --change-section-vma .initrd=$(printf 0x%x $initrd_offs) \
-  "/usr/lib/systemd/boot/efi/linuxx64.efi.stub" "/boot/vxstub.efi"
+  "/usr/lib/systemd/boot/efi/linuxx64.efi.stub" "/tmp/vxstub.efi"
 
 exit 0

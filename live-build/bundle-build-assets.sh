@@ -32,7 +32,7 @@ fi
 # Move all assets into the bundle dir
 echo "Copy all other required assets to ${bundle_dir}"
 cp STARTUP.NSH "${bundle_dir}/"
-cp "${tmp_build_dir}/chroot/boot/vxstub.efi" "${bundle_dir}/VX64.EFI"
+cp "${tmp_build_dir}/chroot/tmp/vxstub.efi" "${bundle_dir}/VX64.EFI"
 cp -r "${tmp_build_dir}/binary/live" "${bundle_dir}/"
 
 echo "Creating tarball of all assets"
