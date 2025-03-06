@@ -1,28 +1,111 @@
-TODO: clean this up, proper formatting, etc...
+# Setting up USB drives for use with vx-iso
 
-Creating a live-build:
-Package Dependencies: apt-get install -y live-build sbsigntool
+## USB and OS Requirements
 
-From vx-iso/live-build:
-./run-live-build.sh
+You should use a Linux OS for the below steps.
 
-After this completes, there will be a new subdir: tmp-build-dir
-Remain in vx-iso/live-build dir
-To create a vx-iso asset bundle that can later be installed to a USB:
-./bundle-build-assets.sh
+We recommend a fast, 64GB+ USB drive to maximize performance.
 
-This will create a tarball in tmp-build-dir/assets named vx-iso-assets.tgz
+## Creating a vx-iso USB drive
 
-You should copy this file elsewhere as the tmp-build-dir/assets directory
-is deleted as part of multiple scripts.
+For these steps, we will assume that your USB is mounted at /dev/sda.
+If your USB mounts to a different device path, be sure to use that. 
+We also assume that you have downloaded or been provided a vx-iso tarball. 
+In this example, we will assume the path is: /tmp/vx-iso-unsigned.tgz
 
-This is the file needed when creating the USB.
+If you have not already cloned the repo, you will need to do that.
+```
+git clone https://github.com/votingworks/vx-iso
+```
 
-Preparing a USB:
-Assuming the USB mounts at /dev/sda for below commands. Use appropriate path.
-Assuming vx-iso-assets.tgz located at: /tmp/vx-iso-assets.tgz
-From vx-iso/live-build:
+Within that directory, you will see a `live-build` sub-directory. `cd` into it. You will run all commands from that directory.
 
+The first step is to initialize your USB with the correct partitions and directories.
+NOTE: THIS WILL DESTROY ANY EXISTING DATA ON THE USB
+
+(You only need to initialize a USB once. You can skip this step if you have a previously initialized vx-iso USB.)
+
+To initialize your USB, run:
+```
 sudo ./initialize-usb.sh /dev/sda 
-./extract-build-assets.sh /tmp/vx-iso-assets.tgz
+```
+
+Next, you need to extract the vx-iso tarball so the required tools and files can be installed on the USB drive. (You only need to perform this step if you are installing the vx-iso application for the first time or updating to a newer version.) To do that, run:
+```
+./extract-build-assets.sh /tmp/vx-iso-unsigned.tgz
+```
+
+The final step is to install vx-iso to the USB. To do that, run:
+```
 sudo ./install-vx-iso-to-usb.sh /dev/sda
+```
+
+At this point, you will have a USB that can run the vx-iso tool.
+
+Note: You can skip all the previous steps if you have a working vx-iso USB. Those steps are only necessary to install vx-iso for the first time, or if you are upgrading to a newer version.
+
+## Copying VotingWorks application images to the USB
+
+When you attach a vx-iso USB to a Linux system, it should automatically mount two partitions: `Keys` and `Data`. Assuming you have a VotingWorks application image, e.g. `vxscan.img.lz4`, you simply need to copy it to the `Data` partition of your USB. There are many ways to accomplish that, so we provide one example.
+
+Assuming a `Data` partition mounted at: `/media/username/Data`
+
+Assuming an application image at: `/tmp/vxscan.img.lz4`
+
+```
+cp /tmp/vxscan.img.lz4 /media/username/Data/ && sync
+```
+
+You can now use the vx-iso USB to install this application image on other systems. 
+
+## Copying Secure Boot keys to the USB
+Note: This section only applies if you need to install Secure Boot keys to a system.
+
+As mentioned previously, a `Keys` partition should be automatically mounted when you attach the vx-iso USB to your Linux system. Assuming you have the necessary Secure Boot keys, you need to copy them to the `Keys` partition of the USB. 
+
+For VotingWorks employees, please request access to our Secure Boot keys. For everyone else, creating Secure Boot keys is left as an exercise for the reader. 
+
+Since there are many ways to perform the copy, we'll use another simple example.
+
+Assuming a `Keys` partition mounted at: `/media/username/Keys`
+
+Assuming Secure Boot keys in a directory: `/tmp/secure_boot_keys`
+
+```
+cp /tmp/secure_boot_keys/* /media/username/Keys/ && sync
+```
+
+You can now use the vx-iso USB to install Secure Boot keys to other systems. (Each system will need to be in Setup/Custom mode for Secure Boot. That is outside the scope of this since system BIOSes can vary widely.)
+
+## Creating a new live-build vx-iso tarball
+
+Note: This section only applies to developers interested in building/modifying the vx-iso application. The specifics of using Debian's live-build tool are outside the scope of this README, so the following steps will build the current version of the vx-iso application.
+
+This process should be run on a Debian 12 system.
+
+Install packages, if not already present:
+```
+apt-get install -y live-build sbsigntool
+```
+
+Note: sbsigntool is not necessary if you do not plan to use a Secure Boot enabled version of vx-iso.
+
+The first step is to build the vx-iso application.
+
+From the `live-build` directory, run:
+```
+./run-live-build.sh
+```
+
+This will take awhile to run. After it completes, there will be a new sub-directory: `tmp-build-dir`
+
+To create a vx-iso tarball that can later be installed to a USB, run:
+```
+./bundle-build-assets.sh
+```
+
+This will create a vx-iso tarball in `tmp-build-dir/assets` named `vx-iso-assets.tgz`
+
+You should copy this file elsewhere as the tmp-build-dir/assets directory is regularly deleted as part of other scripts. We also suggest renaming it with an appropriate naming scheme for your use.
+
+Provide your renamed tarball to anyone who wants to create their own vx-iso USB with your newly built version of the application.
