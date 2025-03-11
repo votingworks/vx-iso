@@ -3,6 +3,9 @@
 mkdir tmp-build-dir
 cd tmp-build-dir
 
+# Clean up any previous build
+sudo lb clean
+
 ../create-base-lb-config.sh
 
 mkdir -p config/hooks/live

@@ -15,7 +15,6 @@ dialog
 dmidecode
 efibootmgr
 efitools
-firmware-sof-signed
 libtss2-tcti-tabrmd0
 linux-image-amd64
 lvm2

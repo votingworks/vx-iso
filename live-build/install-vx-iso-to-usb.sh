@@ -42,7 +42,7 @@ done
 
 # This is necessary to avoid booting older kernels if present
 if [[ -d /mnt/live ]]; then
-  if ! ls /mnt/live/* > /dev/null 2>&1
+  if ls /mnt/live/* > /dev/null 2>&1
   then
     echo "Clearing any pre-existing live filesystem resources"
     rm /mnt/live/*
