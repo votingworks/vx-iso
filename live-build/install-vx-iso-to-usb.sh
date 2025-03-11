@@ -40,6 +40,12 @@ do
   cp "${bundle_dir}/${file}" /mnt/EFI/BOOT/
 done
 
+# This is necessary to avoid booting older kernels if present
+if [[ -d /mnt/live ]]; then
+  echo "Clearing any pre-existing live filesystem resources"
+  rm /mnt/live/*
+fi
+
 echo "Copying live filesystem assets..."
 cp ${bundle_dir}/live/* /mnt/live/
 

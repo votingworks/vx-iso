@@ -19,7 +19,10 @@ ls -altr /usr/lib/systemd/boot/efi/
 
 echo "################################"
 
-echo -n "root=live:LABEL=ESP boot=live live-media-path=/live components toram" > /tmp/cmdline
+echo -n "root=live:LABEL=ESP boot=live live-media-path=/live quiet components toram" > /tmp/cmdline
+
+echo "Update initramfs before bundling"
+update-initramfs -u
 
 echo "Attempting objcopy"
 

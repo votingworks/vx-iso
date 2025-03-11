@@ -10,12 +10,13 @@ bash
 ca-certificates
 cloud-init
 coreutils
-cryptsetup
 curl
 dialog
 dmidecode
 efibootmgr
 efitools
+firmware-sof-signed
+libtss2-tcti-tabrmd0
 linux-image-amd64
 lvm2
 lz4
@@ -25,6 +26,7 @@ openssl
 pv
 systemd
 systemd-sysv
+tpm2-abrmd
 tpm2-openssl
 tpm2-tools
 util-linux
