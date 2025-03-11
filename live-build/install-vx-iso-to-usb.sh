@@ -42,8 +42,11 @@ done
 
 # This is necessary to avoid booting older kernels if present
 if [[ -d /mnt/live ]]; then
-  echo "Clearing any pre-existing live filesystem resources"
-  rm /mnt/live/*
+  if ! ls /mnt/live/* > /dev/null 2>&1
+  then
+    echo "Clearing any pre-existing live filesystem resources"
+    rm /mnt/live/*
+  fi
 fi
 
 echo "Copying live filesystem assets..."
