@@ -19,7 +19,9 @@ ls -altr /usr/lib/systemd/boot/efi/
 
 echo "################################"
 
-echo -n "root=live:LABEL=ESP boot=live live-media-path=/live quiet components toram" > /tmp/cmdline
+# Pad with extra space for dm-verity updates in locked down images
+cmdline="root=live:LABEL=ESP boot=live live-media-path=/live quiet components toram"
+printf "%s%512s" "${cmdline}" > /tmp/cmdline
 
 echo "Update initramfs before bundling"
 update-initramfs -u

@@ -9,7 +9,7 @@ vxiso_tarball="vx-iso-assets.tgz"
 
 if [[ -d "${bundle_dir}" ]]; then
   echo "Removing existing ${bundle_dir}"
-  rm -r "${bundle_dir}"
+  sudo rm -r "${bundle_dir}"
 fi
 
 mkdir -p $bundle_dir
@@ -33,10 +33,10 @@ fi
 echo "Copy all other required assets to ${bundle_dir}"
 cp STARTUP.NSH "${bundle_dir}/"
 cp "${tmp_build_dir}/chroot/tmp/vxstub.efi" "${bundle_dir}/VX64.EFI"
-cp -r "${tmp_build_dir}/binary/live" "${bundle_dir}/"
+sudo cp -r "${tmp_build_dir}/binary/live" "${bundle_dir}/"
 
 echo "Creating tarball of all assets"
 cd ${bundle_dir}
-tar cfz ${vxiso_tarball} *
+sudo tar cfz ${vxiso_tarball} *
 
 exit 0
