@@ -18,7 +18,7 @@ bundle_dir="${tmp_build_dir}/assets"
 
 if [[ -d "${bundle_dir}" ]]; then
   echo "Removing existing ${bundle_dir}"
-  rm -r "${bundle_dir}"
+  sudo rm -r "${bundle_dir}"
 fi
 
 mkdir -p $bundle_dir
