@@ -58,6 +58,13 @@ fi
 # /dev/sd[a-z] pattern, so we search for removable devices
 # The key here is looking for the removable device (RM) flag
 # We only look for our dm-verity filesystem on partition 1, for context
+echo "#################################"
+echo " Looking for devices"
+echo "#################################"
+sleep 5
+lsblk --nodeps -o NAME,RM | awk '$2 == "1"' | cut -d' ' -f1
+sleep 5
+
 for device in `lsblk --nodeps -o NAME,RM | awk '$2 == "1"' | cut -d' ' -f1`
 do
   mkdir -p /mnt
