@@ -106,6 +106,12 @@ To create a vx-iso tarball that can later be installed to a USB, run:
 
 This will create a vx-iso tarball in `tmp-build-dir/assets` named `vx-iso-assets.tgz`
 
-You should copy this file elsewhere as the tmp-build-dir/assets directory is regularly deleted as part of other scripts. We also suggest renaming it with an appropriate naming scheme for your use.
+NOTE: If you are creating a VotingWorks production release, you need to run:
+```
+sudo ./lockdown.sh /path/to/vxdbkey.img
+```
+It will update and sign images as necessary, then recreate the `vx-iso-assets.tgz` tarball.
+
+For either case, you should copy this file elsewhere as the tmp-build-dir/assets directory is regularly deleted as part of running other scripts. We also suggest renaming it with an appropriate naming scheme for your use.
 
 Provide your renamed tarball to anyone who wants to create their own vx-iso USB with your newly built version of the application.
