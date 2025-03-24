@@ -1,5 +1,7 @@
 #!/bin/bash
 
+trap '' SIGINT SIGTSTP SIGTERM
+
 err=0
 function menu() {
 
