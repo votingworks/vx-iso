@@ -1,32 +1,13 @@
 #!/bin/bash
 
-echo "################################"
-echo "Starting objcopy script"
-echo "################################"
-
-echo "Contents of /boot"
-ls -altr /boot/
-
-echo "################################"
-
 vmlinuz_file=`ls -1 /boot/vmlinuz-* | head -1`
 initrd_file=`ls -1 /boot/initrd.img-* | head -1`
-
-echo "################################"
-
-echo "Contents of /usr/lib/systemd/boot/efi/"
-ls -altr /usr/lib/systemd/boot/efi/
-
-echo "################################"
 
 # Pad with extra space for dm-verity updates in locked down images
 cmdline="root=live:LABEL=ESP boot=live live-media-path=/live quiet components toram"
 printf "%s%512s" "${cmdline}" > /tmp/cmdline
 
-echo "Update initramfs before bundling"
 update-initramfs -u
-
-echo "Attempting objcopy"
 
 stub_line=$(objdump -h "/usr/lib/systemd/boot/efi/linuxx64.efi.stub" | tail -2 | head -1)
 stub_size=0x$(echo "$stub_line" | awk '{print $3}')
