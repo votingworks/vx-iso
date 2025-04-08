@@ -1,0 +1,1 @@
+boot=live live-media-path=/live verity.error_behavior=restart verity.hashdev=/live/filesystem.squashfs.verity verity.rootdev=/live/filesystem.squashfs verity.hash=VERITY_HASH_PLACEHOLDER quiet components toram

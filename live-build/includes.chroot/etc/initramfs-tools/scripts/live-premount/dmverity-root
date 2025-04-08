@@ -1,0 +1,94 @@
+#!/bin/sh
+# This allows the dmverity root hash to be passed in on the command line
+# from our bootloader, so we can do verity verification before continuing
+# the boot process.
+#
+
+PREFIX="dmverity-root"
+
+case $1 in
+    prereqs)
+        exit 0
+        ;;
+esac
+
+HASH=""
+HASHDEV=""
+DATADEV=""
+
+for arg in $(cat /proc/cmdline)
+do
+    case "$arg" in
+        verity.hash=*)
+            HASH=${arg#verity.hash=}
+            ;;
+	verity.rootdev=*)
+            DATADEV=${arg#verity.rootdev=}
+            ;;
+	verity.hashdev=*)
+            HASHDEV=${arg#verity.hashdev=}
+            ;;
+        *)
+            ;;
+    esac
+done
+
+# We support an unsigned/unverified boot option, so it's necessary
+# to bail out of this script if that's the case. Any production
+# vx-iso will have these variables embedded in the kernel cmdline
+# to ensure we only boot verified instances
+# TODO: should this be more robust, e.g. if secure boot is enabled
+# and these don't exist, reboot instead of allowing a boot to continue?
+if [ "$HASH" = "" ] || [ "$DATADEV" = "" ] || [ "$HASHDEV" = "" ]
+then
+    echo "$PREFIX: verity command line parameters not found; not enabling"
+    exit 0
+fi
+
+if ! modprobe -qb dm_verity
+then
+    echo "$PREFIX: unable to load dm_verity module"
+    exit 0
+fi
+
+
+# We need to find the verity verified filesystem on available USBs
+# since it is possible multiple USB devices could be present
+# It's also possible for the device path naming to differ from the standard
+# /dev/sd[a-z] pattern, so we search for removable devices
+# The key here is looking for the removable device (RM) flag
+# We only look for our dm-verity filesystem on partition 1, for context
+echo "#################################"
+echo " Looking for devices"
+echo "#################################"
+sleep 5
+lsblk --nodeps -o NAME,RM | awk '$2 == "1"' | cut -d' ' -f1
+sleep 5
+
+for device in `lsblk --nodeps -o NAME,RM | awk '$2 == "1"' | cut -d' ' -f1`
+do
+  mkdir -p /mnt
+  mount /dev/${device}1 /mnt
+  echo "Trying to verify ${device}"
+  echo "${DATADEV}"
+  echo "${HASHDEV}"
+  echo "${HASH}"
+  sleep 5
+  if ! veritysetup verify "/mnt/${DATADEV}" "/mnt/${HASHDEV}" "${HASH}"
+  then
+	echo "$PREFIX: ${DATADEV} unable to verify /dev/${device}"
+  else
+	echo "Verified! Booting from /dev/${device}"
+	umount /mnt
+	exit 0
+  fi
+  umount /mnt
+  sleep 3
+done
+
+# If we get here, no removable device contained a verified system, so 
+# a reboot is forced
+echo "No verified systems were found on removable devices. Rebooting."
+/usr/sbin/reboot -f
+
+exit 0
