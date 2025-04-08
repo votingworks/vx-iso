@@ -15,6 +15,7 @@ dialog
 dmidecode
 efibootmgr
 efitools
+file
 libtss2-tcti-tabrmd0
 linux-image-amd64
 lvm2
