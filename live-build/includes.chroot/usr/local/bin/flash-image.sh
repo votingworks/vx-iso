@@ -387,7 +387,7 @@ if [[ -z $_finalsize ]]; then
         #_finalsize="64G"
     #fi
     lz4cat "$_path/$_toflash" 2>/dev/null | dd of=/tmp/boot_header bs=1M count=1
-    sectors=$(file /tmp/boot_header | grep -o '[0-9]\+ sectors' | cut -d' ' -f1
+    sectors=$(file /tmp/boot_header | grep -o '[0-9]\+ sectors' | cut -d' ' -f1)
     _finalsize=$(( ${sectors} * 512 / 1024 / 1024 / 1024 + 1 ))G
 fi
 
