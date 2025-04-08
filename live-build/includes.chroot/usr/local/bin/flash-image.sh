@@ -379,13 +379,16 @@ sleep 3
 clear
 
 if [[ -z $_finalsize ]]; then
-    echo "What is the expected final size of the image, in GB? [64]:"
-    read -r answer
-    _finalsize="${answer}G"
+    #echo "What is the expected final size of the image, in GB? [64]:"
+    #read -r answer
+    #_finalsize="${answer}G"
 
-    if [[ -z "$answer" ]]; then
-        _finalsize="64G"
-    fi
+    #if [[ -z "$answer" ]]; then
+        #_finalsize="64G"
+    #fi
+    lz4cat "$_path/$_toflash" 2>/dev/null | dd of=/tmp/boot_header bs=1M count=1
+    sectors=$(file /tmp/boot_header | grep -o '[0-9]\+ sectors' | cut -d' ' -f1
+    _finalsize=$(( ${sectors} * 512 / 1024 / 1024 / 1024 + 1 ))G
 fi
 
 _disk="/dev/nvme0n1"
