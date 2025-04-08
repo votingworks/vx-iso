@@ -378,17 +378,20 @@ fi
 sleep 3
 clear
 
+# We used to parse the image filename for disk space, but it's better
+# to inspect the image and calculate the size dynamically
+# We dump the boot header, which should contain the sector count we need
+# If it doesn't, we just default to 64G. The progress bar will be off, but
+# it's not a situation that blocks installing the image.
 if [[ -z $_finalsize ]]; then
-    #echo "What is the expected final size of the image, in GB? [64]:"
-    #read -r answer
-    #_finalsize="${answer}G"
-
-    #if [[ -z "$answer" ]]; then
-        #_finalsize="64G"
-    #fi
     lz4cat "$_path/$_toflash" 2>/dev/null | dd of=/tmp/boot_header bs=1M count=1
     sectors=$(file /tmp/boot_header | grep -o '[0-9]\+ sectors' | cut -d' ' -f1)
-    _finalsize=$(( ${sectors} * 512 / 1024 / 1024 / 1024 + 1 ))G
+    if [[ -z $sectors ]]; then
+      echo "Could not detect final image size. Defaulting to 64G"
+      _finalsize="64G"
+    else
+      _finalsize=$(( ${sectors} * 512 / 1024 / 1024 / 1024 + 1 ))G
+    fi
 fi
 
 _disk="/dev/nvme0n1"
