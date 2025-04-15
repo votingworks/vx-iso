@@ -1,8 +1,16 @@
 #!/bin/bash
+# TODO: Convert this to be entirely function based.
+# It is currently too confusing to easily follow execution flow.
 
 trap '' SIGINT SIGTSTP SIGTERM
 
 err=0
+
+# This is to evade any race conditions with the display buffer that cuts off
+# text. See votingworks/vx-iso#21.
+sleep 1
+clear
+
 function menu() {
 
     # Due to quirks of how bash passes arrays, all args are one array. The
@@ -156,27 +164,76 @@ function part_select() {
     done
 }
 
-# This is to evade any race conditions with the display buffer that cuts off
-# text. See votingworks/vx-iso#21.
-sleep 1
-clear
-## Detect if this disk already has VotingWorks data on it and copy the machine config
-#vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
-#
-#if [[ -n $vg ]]; then
-#
-#    dir=$(find "/dev/$vg" -name "var")
-#    mount "$dir" /mnt
-#
-#    if [ -d "/mnt/vx/config" ]; then
-#        echo "Found /vx/config to copy. Press Return to continue."
-#        read -r
-#        tar -czvf vx-config.tar.gz /mnt/vx/config
-#    fi
-#
-#    umount /mnt
-#fi
-#clear
+function detect_existing_vx_config() {
+  vx_config_mnt="/tmp/vx_config_mnt"
+  mkdir -p $vx_config_mnt
+
+  vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
+
+  if [[ -n $vg && $vg == "Vx-vg" ]]; then
+
+    # Activate the volume group
+    vgchange -ay $vg
+    
+    # Find the encrypted volume
+    dir=$(find "/dev/$vg" -name "var_encrypted")
+
+    # Open the encrypted volume
+    (echo "" | cryptsetup open $dir var_decrypted) || (echo "insecure" | cryptsetup open $dir var_decrypted)
+
+    mount /dev/mapper/var_decrypted $vx_config_mnt
+
+    if [ -d "${vx_config_mnt}/vx/config" ]; then
+        echo "Found potential /vx/config to copy. Press Return to continue."
+        read -r
+        tar -czvf vx-config.tar.gz ${vx_config_mnt}/vx/config
+    fi
+
+    umount $vx_config_mnt
+    rm -rf $vx_config_mnt
+
+    # Close the encrypted volume
+    cryptsetup close var_decrypted
+
+    # Deactivate the volume group
+    vgchange -an Vx-vg
+
+    clear
+    sleep 10
+  fi
+}
+
+function restore_vx_config() {
+  if [ -e "vx-config.tar.gz" ]; then
+    vx_config_mnt="/tmp/vx_config_mnt"
+    mkdir -p $vx_config_mnt
+
+    vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
+
+    if [[ -n $vg && $vg == "Vx-vg" ]]; then
+      # Activate the volume group
+      vgchange -ay $vg
+
+      dir=$(find "/dev/$vg" -name "var_encrypted")
+      (echo "" | cryptsetup open $dir var_decrypted) || (echo "insecure" | cryptsetup open $dir var_decrypted)
+
+      mount /dev/mapper/var_decrypted $vx_config_mnt
+
+      if [ -d "${vx_config_mnt}/vx/config" ]; then
+          tar --extract --file=vx-config.tar.gz --gzip --verbose --keep-directory-symlink -C /
+      fi
+
+      umount $vx_config_mnt
+      rm -rf $vx_config_mnt
+
+      cryptsetup close var_decrypted
+      vgchange -an $vg
+      echo "Replacing /vx/config was successful. Press any key to continue."
+      read -r
+      clear
+    fi
+  fi
+}
 
 function flash_keys() {
     # use dmidecode to detect if we're on a Surface Go
@@ -315,7 +372,6 @@ else
     mount "/dev/${part}" /mnt
 fi
 
-
 clear
 ignore=()
 if [[ -n $data ]]; then 
@@ -431,8 +487,10 @@ statussize="$(echo "$_finalsize" | cut -d '.' -f 1)"
 if ! (echo "$statussize" | grep -qo "G"); then
     statussize="${statussize}G"
 fi 
-$_compression -c -d $_path/"$_toflash" | pv -s "${statussize}" > "$_datadisk"
 
+detect_existing_vx_config
+
+$_compression -c -d $_path/"$_toflash" | pv -s "${statussize}" > "$_datadisk"
 
 sleep 3
 if [ $_hashash == 1 ]; then 
@@ -446,17 +504,24 @@ fi
 
 umount /mnt
 
-# We need to check whether the image is signed or not
-# so we mount the boot partition and look for the signed efi file
-# If it's not found, use the default; otherwise, use the signed file
-mount "${_datadisk}p1" /mnt
-sleep 3
+# Assumptions are made about our datadisk
+# partition "1" is the boot partition
+# partition "3" is the LVM partition
+datadisk_suffix=$(echo $_datadisk | cut -d'/' -f3)
+flashed_root_partition=$(lsblk -l | grep $datadisk_suffix | grep part | awk '{print $1}' | grep '1$')
 
+# Determine if this is a signed image or not
+is_signed_image=0
+mount "/dev/${flashed_root_partition}" /mnt
+sleep 3
 efi_loader="\\EFI\\debian\\shimx64.efi"
 if [[ -f "/mnt/EFI/debian/VxLinux-signed.efi" ]]; then
   efi_loader="\\EFI\\debian\\VxLinux-signed.efi"
+  is_signed_image=1
 fi
 umount /mnt
+
+restore_vx_config
 
 # Get the current set of boot entries
 efibootmgr -v | grep 'EFI\\debian' > /tmp/current_boot
