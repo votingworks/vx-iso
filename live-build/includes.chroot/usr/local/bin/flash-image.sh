@@ -166,7 +166,9 @@ function part_select() {
 
 function detect_existing_vx_config() {
   vx_config_mnt="/tmp/vx_config_mnt"
+  vx_root_mnt="/tmp/vx_root_mnt"
   mkdir -p $vx_config_mnt
+  mkdir -p $vx_root_mnt
 
   vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
 
@@ -182,15 +184,24 @@ function detect_existing_vx_config() {
     (echo "" | cryptsetup open $dir var_decrypted) || (echo "insecure" | cryptsetup open $dir var_decrypted)
 
     mount /dev/mapper/var_decrypted $vx_config_mnt
+    mount /dev/mapper/Vx--vg-root $vx_root_mnt
+
+    if ! grep 'luks,tpm2-device=auto' /etc/crypttab > /dev/null; then
+      previous_secure_boot_state=0
+    else
+      previous_secure_boot_state=1
+    fi
 
     if [ -d "${vx_config_mnt}/vx/config" ]; then
-        echo "Found potential /vx/config to copy. Press Return to continue."
-        read -r
+	previous_machine_type=$(cat ${vx_config_mnt}/vx/config/machine-type)
+	previous_machine_id=$(cat ${vx_config_mnt}/vx/config/machine-id)
         tar -czvf vx-config.tar.gz ${vx_config_mnt}/vx/config
     fi
 
     umount $vx_config_mnt
+    umount $vx_root_mnt
     rm -rf $vx_config_mnt
+    rm -rf $vx_root_mnt
 
     # Close the encrypted volume
     cryptsetup close var_decrypted
@@ -199,14 +210,15 @@ function detect_existing_vx_config() {
     vgchange -an Vx-vg
 
     clear
-    sleep 10
   fi
 }
 
 function restore_vx_config() {
   if [ -e "vx-config.tar.gz" ]; then
     vx_config_mnt="/tmp/vx_config_mnt"
+    vx_root_mnt="/tmp/vx_root_mnt"
     mkdir -p $vx_config_mnt
+    mkdir -p $vx_root_mnt
 
     vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
 
@@ -218,9 +230,25 @@ function restore_vx_config() {
       (echo "" | cryptsetup open $dir var_decrypted) || (echo "insecure" | cryptsetup open $dir var_decrypted)
 
       mount /dev/mapper/var_decrypted $vx_config_mnt
+      mount /dev/mapper/Vx--vg-root $vx_root_mnt
 
-      if [ -d "${vx_config_mnt}/vx/config" ]; then
+      if ! grep 'luks,tpm2-device=auto' /etc/crypttab > /dev/null; then
+        new_secure_boot_state=0
+      else
+        new_secure_boot_state=1
+      fi
+
+      if [[ $previous_secure_boot_state != $new_secure_boot_state ]]; then
+        echo "Secure boot mismatch. Force the config wizard."
+	touch "${vx_config_mnt}/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
+        sleep 10
+      else
+        if [ -d "${vx_config_mnt}/vx/config" ]; then
+          echo "secure boot matches. copy config, remove config flag"
           tar --extract --file=vx-config.tar.gz --gzip --verbose --keep-directory-symlink -C /
+	  rm -f "${vx_config_mnt}/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT" > /dev/null 2>&1
+        fi
+        sleep 10
       fi
 
       umount $vx_config_mnt
@@ -228,8 +256,6 @@ function restore_vx_config() {
 
       cryptsetup close var_decrypted
       vgchange -an $vg
-      echo "Replacing /vx/config was successful. Press any key to continue."
-      read -r
       clear
     fi
   fi
