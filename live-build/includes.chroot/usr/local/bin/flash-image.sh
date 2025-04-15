@@ -186,11 +186,14 @@ function detect_existing_vx_config() {
     mount /dev/mapper/var_decrypted $vx_config_mnt
     mount /dev/mapper/Vx--vg-root $vx_root_mnt
 
-    if ! grep 'luks,tpm2-device=auto' /etc/crypttab > /dev/null; then
+    if ! grep 'luks,tpm2-device=auto' ${vx_root_mnt}/etc/crypttab > /dev/null; then
       previous_secure_boot_state=0
     else
       previous_secure_boot_state=1
     fi
+
+    echo "Previous SB: ${previous_secure_boot_state}"
+    sleep 10
 
     if [ -d "${vx_config_mnt}/vx/config" ]; then
 	previous_machine_type=$(cat ${vx_config_mnt}/vx/config/machine-type)
@@ -232,21 +235,24 @@ function restore_vx_config() {
       mount /dev/mapper/var_decrypted $vx_config_mnt
       mount /dev/mapper/Vx--vg-root $vx_root_mnt
 
-      if ! grep 'luks,tpm2-device=auto' /etc/crypttab > /dev/null; then
+      if ! grep 'luks,tpm2-device=auto' ${vx_root_mnt}/etc/crypttab > /dev/null; then
         new_secure_boot_state=0
       else
         new_secure_boot_state=1
       fi
 
+      echo "Previous SB: ${previous_secure_boot_state}"
+      echo "New SB: ${new_secure_boot_state}"
+
       if [[ $previous_secure_boot_state != $new_secure_boot_state ]]; then
         echo "Secure boot mismatch. Force the config wizard."
-	touch "${vx_config_mnt}/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
+	touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
         sleep 10
       else
         if [ -d "${vx_config_mnt}/vx/config" ]; then
           echo "secure boot matches. copy config, remove config flag"
           tar --extract --file=vx-config.tar.gz --gzip --verbose --keep-directory-symlink -C /
-	  rm -f "${vx_config_mnt}/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT" > /dev/null 2>&1
+	  rm -f "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT" > /dev/null 2>&1
         fi
         sleep 10
       fi
