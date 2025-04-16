@@ -198,9 +198,11 @@ function detect_existing_vx_config() {
     if [ -d "${vx_config_mnt}/vx/config" ]; then
       previous_machine_type=$(cat ${vx_config_mnt}/vx/config/machine-type)
       previous_machine_id=$(cat ${vx_config_mnt}/vx/config/machine-id)
-      tar -czvf vx-config.tar.gz ${vx_config_mnt}/vx/config
-
+      tar --exclude="${vx_config_mnt}/vx/config/app-flags" -czvf vx-config.tar.gz ${vx_config_mnt}/vx/config
     fi
+
+    previous_qa_state=$(cat ${vx_config_mnt}/vx/config/is-qa-image)
+    previous_prod_cert_hash=$(sha256sum ${vx_root_mnt}/vx/code/vxsuite/libs/auth/certs/prod/vx-cert-authority-cert.pem | cut -d' ' -f1)
 
     umount $vx_config_mnt
     umount $vx_root_mnt
@@ -245,6 +247,16 @@ function restore_vx_config() {
     echo "New SB: ${new_secure_boot_state}"
 
     new_machine_type=$(cat ${vx_config_mnt}/vx/config/machine-type)
+    new_qa_state=$(cat ${vx_config_mnt}/vx/config/is-qa-image)
+    new_prod_cert_hash=$(sha256sum ${vx_root_mnt}/vx/code/vxsuite/libs/auth/certs/prod/vx-cert-authority-cert.pem | cut -d' ' -f1)
+
+    echo "###########################################################"
+    echo " Secure Boot: $previous_secure_boot_state vs $new_secure_boot_state"
+    echo " Machine Type: $previous_machine_type vs $new_machine_type"
+    echo " QA State: $previous_qa_state vs $new_qa_state"
+    echo " Certs: $previous_prod_cert_hash vs $new_prod_cert_hash"
+    echo "###########################################################"
+    sleep 10
 
     if [[ $previous_secure_boot_state != $new_secure_boot_state ]]; then
       echo "Secure boot mismatch. Force the config wizard."
@@ -254,9 +266,17 @@ function restore_vx_config() {
       echo "Machine type mismatch. Force the config wizard."
       touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
       sleep 10
+    elif [[ $previous_qa_state != $new_qa_state ]]; then
+      echo "QA State mismatch. Force the config wizard."
+      touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
+      sleep 10
+    elif [[ $previous_prod_cert_hash != $new_prod_cert_hash ]]; then
+      echo "Certificate mismatch. Force the config wizard."
+      touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
+      sleep 10
     else
       if [[ -d "${vx_config_mnt}/vx/config" && -f "vx-config.tar.gz" ]]; then
-        echo "Secure Boot state and machine types match. Copy the config"
+        echo "No conflicts. Copy the config"
         tar --extract --file=vx-config.tar.gz --gzip --verbose --keep-directory-symlink -C /
         rm -f "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT" > /dev/null 2>&1
         sleep 10
