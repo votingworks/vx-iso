@@ -196,9 +196,10 @@ function detect_existing_vx_config() {
     sleep 10
 
     if [ -d "${vx_config_mnt}/vx/config" ]; then
-	previous_machine_type=$(cat ${vx_config_mnt}/vx/config/machine-type)
-	previous_machine_id=$(cat ${vx_config_mnt}/vx/config/machine-id)
-        tar -czvf vx-config.tar.gz ${vx_config_mnt}/vx/config
+      previous_machine_type=$(cat ${vx_config_mnt}/vx/config/machine-type)
+      previous_machine_id=$(cat ${vx_config_mnt}/vx/config/machine-id)
+      tar -czvf vx-config.tar.gz ${vx_config_mnt}/vx/config
+
     fi
 
     umount $vx_config_mnt
@@ -217,53 +218,61 @@ function detect_existing_vx_config() {
 }
 
 function restore_vx_config() {
-  if [ -e "vx-config.tar.gz" ]; then
-    vx_config_mnt="/tmp/vx_config_mnt"
-    vx_root_mnt="/tmp/vx_root_mnt"
-    mkdir -p $vx_config_mnt
-    mkdir -p $vx_root_mnt
+  vx_config_mnt="/tmp/vx_config_mnt"
+  vx_root_mnt="/tmp/vx_root_mnt"
+  mkdir -p $vx_config_mnt
+  mkdir -p $vx_root_mnt
 
-    vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
+  vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
 
-    if [[ -n $vg && $vg == "Vx-vg" ]]; then
-      # Activate the volume group
-      vgchange -ay $vg
+  if [[ -n $vg && $vg == "Vx-vg" ]]; then
+    # Activate the volume group
+    vgchange -ay $vg
 
-      dir=$(find "/dev/$vg" -name "var_encrypted")
-      (echo "" | cryptsetup open $dir var_decrypted) || (echo "insecure" | cryptsetup open $dir var_decrypted)
+    dir=$(find "/dev/$vg" -name "var_encrypted")
+    (echo "" | cryptsetup open $dir var_decrypted) || (echo "insecure" | cryptsetup open $dir var_decrypted)
 
-      mount /dev/mapper/var_decrypted $vx_config_mnt
-      mount /dev/mapper/Vx--vg-root $vx_root_mnt
+    mount /dev/mapper/var_decrypted $vx_config_mnt
+    mount /dev/mapper/Vx--vg-root $vx_root_mnt
 
-      if ! grep 'luks,tpm2-device=auto' ${vx_root_mnt}/etc/crypttab > /dev/null; then
-        new_secure_boot_state=0
-      else
-        new_secure_boot_state=1
-      fi
-
-      echo "Previous SB: ${previous_secure_boot_state}"
-      echo "New SB: ${new_secure_boot_state}"
-
-      if [[ $previous_secure_boot_state != $new_secure_boot_state ]]; then
-        echo "Secure boot mismatch. Force the config wizard."
-	touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
-        sleep 10
-      else
-        if [ -d "${vx_config_mnt}/vx/config" ]; then
-          echo "secure boot matches. copy config, remove config flag"
-          tar --extract --file=vx-config.tar.gz --gzip --verbose --keep-directory-symlink -C /
-	  rm -f "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT" > /dev/null 2>&1
-        fi
-        sleep 10
-      fi
-
-      umount $vx_config_mnt
-      rm -rf $vx_config_mnt
-
-      cryptsetup close var_decrypted
-      vgchange -an $vg
-      clear
+    if ! grep 'luks,tpm2-device=auto' ${vx_root_mnt}/etc/crypttab > /dev/null; then
+      new_secure_boot_state=0
+    else
+      new_secure_boot_state=1
     fi
+
+    echo "Previous SB: ${previous_secure_boot_state}"
+    echo "New SB: ${new_secure_boot_state}"
+
+    new_machine_type=$(cat ${vx_config_mnt}/vx/config/machine-type)
+
+    if [[ $previous_secure_boot_state != $new_secure_boot_state ]]; then
+      echo "Secure boot mismatch. Force the config wizard."
+      touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
+      sleep 10
+    elif [[ $previous_machine_type != $new_machine_type ]]; then
+      echo "Machine type mismatch. Force the config wizard."
+      touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
+      sleep 10
+    else
+      if [[ -d "${vx_config_mnt}/vx/config" && -f "vx-config.tar.gz" ]]; then
+        echo "Secure Boot state and machine types match. Copy the config"
+        tar --extract --file=vx-config.tar.gz --gzip --verbose --keep-directory-symlink -C /
+        rm -f "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT" > /dev/null 2>&1
+        sleep 10
+      fi
+    fi
+
+    # Create a flag file to automatically expand the var partition
+    # on the newly flashed image first boot, regardless of config transfer
+    touch ${vx_config_mnt}/vx/config/EXPAND_VAR
+
+    umount $vx_config_mnt
+    rm -rf $vx_config_mnt
+
+    cryptsetup close var_decrypted
+    vgchange -an $vg
+    clear
   fi
 }
 
