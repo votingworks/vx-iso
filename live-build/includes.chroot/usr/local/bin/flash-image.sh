@@ -235,7 +235,10 @@ function restore_vx_config() {
     (echo "" | cryptsetup open $dir var_decrypted) || (echo "insecure" | cryptsetup open $dir var_decrypted)
 
     mount /dev/mapper/var_decrypted $vx_config_mnt
-    mount /dev/mapper/Vx--vg-root $vx_root_mnt
+
+    # We have to do this to ensure the tar command does not change
+    # any contents on the root partition, even though all we copy are symlinks
+    mount -o ro /dev/mapper/Vx--vg-root $vx_root_mnt
 
     if ! grep 'luks,tpm2-device=auto' ${vx_root_mnt}/etc/crypttab > /dev/null; then
       new_secure_boot_state=0
@@ -289,6 +292,9 @@ function restore_vx_config() {
 
     umount $vx_config_mnt
     rm -rf $vx_config_mnt
+
+    umount $vx_root_mnt
+    rm -rf $vx_root_mnt
 
     cryptsetup close var_decrypted
     vgchange -an $vg
