@@ -192,8 +192,8 @@ function detect_existing_vx_config() {
       previous_secure_boot_state=1
     fi
 
-    echo "Previous SB: ${previous_secure_boot_state}"
-    sleep 10
+    ### REMOVE echo "Previous SB: ${previous_secure_boot_state}"
+    ### REMOVE sleep 10
 
     if [ -d "${vx_config_mnt}/vx/config" ]; then
       previous_machine_type=$(cat ${vx_config_mnt}/vx/config/machine-type)
@@ -246,43 +246,43 @@ function restore_vx_config() {
       new_secure_boot_state=1
     fi
 
-    echo "Previous SB: ${previous_secure_boot_state}"
-    echo "New SB: ${new_secure_boot_state}"
+    ### REMOVE echo "Previous SB: ${previous_secure_boot_state}"
+    ### REMOVE echo "New SB: ${new_secure_boot_state}"
 
     new_machine_type=$(cat ${vx_config_mnt}/vx/config/machine-type)
     new_qa_state=$(cat ${vx_config_mnt}/vx/config/is-qa-image)
     new_prod_cert_hash=$(sha256sum ${vx_root_mnt}/vx/code/vxsuite/libs/auth/certs/prod/vx-cert-authority-cert.pem | cut -d' ' -f1)
 
-    echo "###########################################################"
-    echo " Secure Boot: $previous_secure_boot_state vs $new_secure_boot_state"
-    echo " Machine Type: $previous_machine_type vs $new_machine_type"
-    echo " QA State: $previous_qa_state vs $new_qa_state"
-    echo " Certs: $previous_prod_cert_hash vs $new_prod_cert_hash"
-    echo "###########################################################"
-    sleep 10
+    ### REMOVE echo "###########################################################"
+    ### REMOVE echo " Secure Boot: $previous_secure_boot_state vs $new_secure_boot_state"
+    ### REMOVE echo " Machine Type: $previous_machine_type vs $new_machine_type"
+    ### REMOVE echo " QA State: $previous_qa_state vs $new_qa_state"
+    ### REMOVE echo " Certs: $previous_prod_cert_hash vs $new_prod_cert_hash"
+    ### REMOVE echo "###########################################################"
+    ### REMOVE sleep 10
 
     if [[ $previous_secure_boot_state != $new_secure_boot_state ]]; then
-      echo "Secure boot mismatch. Force the config wizard."
+      ### REMOVE echo "Secure boot mismatch. Force the config wizard."
       touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
-      sleep 10
+      ### REMOVE sleep 10
     elif [[ $previous_machine_type != $new_machine_type ]]; then
-      echo "Machine type mismatch. Force the config wizard."
+      ### REMOVE echo "Machine type mismatch. Force the config wizard."
       touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
-      sleep 10
+      ### REMOVE sleep 10
     elif [[ $previous_qa_state != $new_qa_state ]]; then
-      echo "QA State mismatch. Force the config wizard."
+      ### REMOVE echo "QA State mismatch. Force the config wizard."
       touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
-      sleep 10
+      ### REMOVE sleep 10
     elif [[ $previous_prod_cert_hash != $new_prod_cert_hash ]]; then
-      echo "Certificate mismatch. Force the config wizard."
+      ### REMOVE echo "Certificate mismatch. Force the config wizard."
       touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
-      sleep 10
+      ### REMOVE sleep 10
     else
       if [[ -d "${vx_config_mnt}/vx/config" && -f "vx-config.tar.gz" ]]; then
-        echo "No conflicts. Copy the config"
+        ### REMOVE echo "No conflicts. Copy the config"
         tar --extract --file=vx-config.tar.gz --gzip --verbose --keep-directory-symlink -C /
         rm -f "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT" > /dev/null 2>&1
-        sleep 10
+        ### REMOVE sleep 10
       fi
     fi
 
@@ -539,11 +539,15 @@ echo "Flashing image"
 echo "$_path/$_toflash"
 echo "to disk"
 echo "$_datadisk"
+echo ""
+echo "The flash will automatically begin in 10 seconds, unless you choose not to continue."
+echo ""
 echo "Continue? [y/N]"
 
-read -r answer
+read -t 10 -r flash_answer
+flash_answer="${flash_answer:-y}"
 
-if [[ $answer != 'y' && $answer != 'Y' ]]; then
+if [[ $flash_answer != 'y' && $flash_answer != 'Y' ]]; then
     exit
 fi
 
@@ -632,11 +636,17 @@ else
   efibootmgr -o ${usb_entry},${new_entry}
 fi
 
+# Force an initial boot to the newly created entry, just in case the
+# USB is not removed.
+# NOTE: This is a one time change that will not affect the stored boot order
+efibootmgr -n ${new_entry}
+
 clear
 echo "The flash was successful!"
 echo ""
 echo "Be sure to remove the vx-iso USB. Press Return/Enter to reboot."
-read -r
-echo "Rebooting in 5 seconds..."
-sleep 5
+echo "(The system will automatically reboot in 10 seconds.)"
+read -t 10 -r
+echo "Rebooting..."
+
 systemctl reboot 
