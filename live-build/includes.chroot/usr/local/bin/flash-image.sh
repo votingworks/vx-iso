@@ -165,14 +165,15 @@ function part_select() {
 }
 
 function detect_existing_vx_config() {
-  vx_config_mnt="/tmp/vx_config_mnt"
-  vx_root_mnt="/tmp/vx_root_mnt"
-  mkdir -p $vx_config_mnt
-  mkdir -p $vx_root_mnt
 
   vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
 
   if [[ -n $vg && $vg == "Vx-vg" ]]; then
+
+    vx_config_mnt="/tmp/vx_config_mnt"
+    vx_root_mnt="/tmp/vx_root_mnt"
+    mkdir -p $vx_config_mnt
+    mkdir -p $vx_root_mnt
 
     # Activate the volume group
     vgchange -ay $vg
@@ -217,14 +218,15 @@ function detect_existing_vx_config() {
 }
 
 function restore_vx_config() {
-  vx_config_mnt="/tmp/vx_config_mnt"
-  vx_root_mnt="/tmp/vx_root_mnt"
-  mkdir -p $vx_config_mnt
-  mkdir -p $vx_root_mnt
 
   vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
 
   if [[ -n $vg && $vg == "Vx-vg" ]]; then
+    vx_config_mnt="/tmp/vx_config_mnt"
+    vx_root_mnt="/tmp/vx_root_mnt"
+    mkdir -p $vx_config_mnt
+    mkdir -p $vx_root_mnt
+
     # Activate the volume group
     vgchange -ay $vg
 
