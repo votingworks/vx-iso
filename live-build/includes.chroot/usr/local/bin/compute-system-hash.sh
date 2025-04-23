@@ -2,18 +2,24 @@
 
 trap '' SIGINT SIGTSTP SIGTERM
 
-set -euo pipefail
+#hardcoded to nvme for now
+mount -o ro /dev/nvme0n1p1 /mnt
 
-echo "TODO: Implement verify hash generation from vx-iso against installed image"
+# Check for the VxLinux-signed.efi and handle if it doesn't exist
+# Not dealing with it for now
+# That aside, we're using the strings command to extract the verity hash
+# from the signed efi binary to later use when calculating the SHV
+VERITY_HASH=$(strings /mnt/EFI/debian/VxLinux-signed.efi | grep -o verity.hash=[a-zA-Z0-9]* | cut -d'=' -f2)
 
-sleep 10
+umount /mnt
 
-exit 0
-
-#VERITY_HASH="$(cat /proc/cmdline | awk -F'verity.hash=' '{print $2}' | cut -d' ' -f1)"
-
-#if [[ ! -z "${VERITY_HASH}" ]]; then
-    #echo "${VERITY_HASH}"
-#else
-    #echo "UNVERIFIED"
-#fi
+if [[ ! -z "${VERITY_HASH}" ]]; then
+    if [[ `which xxd` && `which base64` ]]; then
+      base64_hash=$( echo -n ${VERITY_HASH} | xxd -r -p | base64 )
+      echo "Signed Hash: ${base64_hash}"
+      read -p "Press Enter once you have validated the Signed Hash."
+    fi
+else
+    echo "Signed Hash: UNVERIFIED"
+    read -p "This is not a signed image. Press Enter to continue."
+fi
