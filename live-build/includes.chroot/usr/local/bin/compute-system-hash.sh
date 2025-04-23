@@ -23,3 +23,10 @@ else
     echo "Signed Hash: UNVERIFIED"
     read -p "This is not a signed image. Press Enter to continue."
 fi
+
+# TODO/Future: Add QR code support that can be verified at check.voting.works
+# qrencode -t ANSI "payload" -o -
+# where payload is the properly formatted and signed payload
+#
+
+exit 0
