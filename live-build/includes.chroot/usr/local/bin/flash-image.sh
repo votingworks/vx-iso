@@ -11,6 +11,8 @@ err=0
 sleep 1
 clear
 
+vx_config_tarball_path="/vx_config.tar.gz"
+
 function menu() {
 
     # Due to quirks of how bash passes arrays, all args are one array. The
@@ -196,7 +198,7 @@ function detect_existing_vx_config() {
     if [ -d "${vx_config_mnt}/vx/config" ]; then
       previous_machine_type=$(cat ${vx_config_mnt}/vx/config/machine-type)
       previous_machine_id=$(cat ${vx_config_mnt}/vx/config/machine-id)
-      tar --exclude="${vx_config_mnt}/vx/config/app-flags" -czvf vx-config.tar.gz ${vx_config_mnt}/vx/config
+      tar --exclude="${vx_config_mnt}/vx/config/app-flags" -czvf ${vx_config_tarball_path} ${vx_config_mnt}/vx/config
     fi
 
     previous_qa_state=$(cat ${vx_config_mnt}/vx/config/is-qa-image)
@@ -249,17 +251,22 @@ function restore_vx_config() {
     new_qa_state=$(cat ${vx_config_mnt}/vx/config/is-qa-image)
     new_prod_cert_hash=$(sha256sum ${vx_root_mnt}/vx/code/vxsuite/libs/auth/certs/prod/vx-cert-authority-cert.pem | cut -d' ' -f1)
 
+    # Default to running the config wizard
+    # Note: This could override the configuration of an image that
+    # did not set this flag as part of setup-machine/lockdown
+    touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
+
     if [[ $previous_secure_boot_state != $new_secure_boot_state ]]; then
-      touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
+      if [[ $DEBUG == 1 ]]; then echo "Secure Boot state does not match"; fi
     elif [[ $previous_machine_type != $new_machine_type ]]; then
-      touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
+      if [[ $DEBUG == 1 ]]; then echo "Machine Type does not match"; fi
     elif [[ $previous_qa_state != $new_qa_state ]]; then
-      touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
+      if [[ $DEBUG == 1 ]]; then echo "QA Image state does not match"; fi
     elif [[ $previous_prod_cert_hash != $new_prod_cert_hash ]]; then
-      touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
+      if [[ $DEBUG == 1 ]]; then echo "Prod Cert state does not match"; fi
     else
-      if [[ -d "${vx_config_mnt}/vx/config" && -f "vx-config.tar.gz" ]]; then
-        tar --extract --file=vx-config.tar.gz --gzip --verbose --keep-directory-symlink -C /
+      if [[ -d "${vx_config_mnt}/vx/config" && -f "${vx_config_tarball_path}" ]]; then
+        tar --extract --file=${vx_config_tarball_path} --gzip --verbose --keep-directory-symlink -C /
         rm -f "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT" > /dev/null 2>&1
       fi
     fi
