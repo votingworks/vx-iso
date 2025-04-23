@@ -1,8 +1,18 @@
 #!/bin/bash
+# TODO: Convert this to be entirely function based.
+# It is currently too confusing to easily follow execution flow.
 
 trap '' SIGINT SIGTSTP SIGTERM
 
 err=0
+
+# This is to evade any race conditions with the display buffer that cuts off
+# text. See votingworks/vx-iso#21.
+sleep 1
+clear
+
+vx_config_tarball_path="/vx_config.tar.gz"
+
 function menu() {
 
     # Due to quirks of how bash passes arrays, all args are one array. The
@@ -156,27 +166,126 @@ function part_select() {
     done
 }
 
-# This is to evade any race conditions with the display buffer that cuts off
-# text. See votingworks/vx-iso#21.
-sleep 1
-clear
-## Detect if this disk already has VotingWorks data on it and copy the machine config
-#vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
-#
-#if [[ -n $vg ]]; then
-#
-#    dir=$(find "/dev/$vg" -name "var")
-#    mount "$dir" /mnt
-#
-#    if [ -d "/mnt/vx/config" ]; then
-#        echo "Found /vx/config to copy. Press Return to continue."
-#        read -r
-#        tar -czvf vx-config.tar.gz /mnt/vx/config
-#    fi
-#
-#    umount /mnt
-#fi
-#clear
+function detect_existing_vx_config() {
+
+  vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
+
+  if [[ -n $vg && $vg == "Vx-vg" ]]; then
+
+    vx_config_mnt="/tmp/vx_config_mnt"
+    vx_root_mnt="/tmp/vx_root_mnt"
+    mkdir -p $vx_config_mnt
+    mkdir -p $vx_root_mnt
+
+    # Activate the volume group
+    vgchange -ay $vg
+    
+    # Find the encrypted volume
+    dir=$(find "/dev/$vg" -name "var_encrypted")
+
+    # Open the encrypted volume
+    (echo "" | cryptsetup open $dir var_decrypted) || (echo "insecure" | cryptsetup open $dir var_decrypted)
+
+    mount /dev/mapper/var_decrypted $vx_config_mnt
+    mount /dev/mapper/Vx--vg-root $vx_root_mnt
+
+    if ! grep 'luks,tpm2-device=auto' ${vx_root_mnt}/etc/crypttab > /dev/null; then
+      previous_secure_boot_state=0
+    else
+      previous_secure_boot_state=1
+    fi
+
+    if [ -d "${vx_config_mnt}/vx/config" ]; then
+      previous_machine_type=$(cat ${vx_config_mnt}/vx/config/machine-type)
+      previous_machine_id=$(cat ${vx_config_mnt}/vx/config/machine-id)
+      tar --exclude="${vx_config_mnt}/vx/config/app-flags" -czvf ${vx_config_tarball_path} ${vx_config_mnt}/vx/config
+    fi
+
+    previous_qa_state=$(cat ${vx_config_mnt}/vx/config/is-qa-image)
+    previous_prod_cert_hash=$(sha256sum ${vx_root_mnt}/vx/code/vxsuite/libs/auth/certs/prod/vx-cert-authority-cert.pem | cut -d' ' -f1)
+
+    umount $vx_config_mnt
+    umount $vx_root_mnt
+    rm -rf $vx_config_mnt
+    rm -rf $vx_root_mnt
+
+    # Close the encrypted volume
+    cryptsetup close var_decrypted
+
+    # Deactivate the volume group
+    vgchange -an Vx-vg
+
+    clear
+  fi
+}
+
+function restore_vx_config() {
+
+  vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
+
+  if [[ -n $vg && $vg == "Vx-vg" ]]; then
+    vx_config_mnt="/tmp/vx_config_mnt"
+    vx_root_mnt="/tmp/vx_root_mnt"
+    mkdir -p $vx_config_mnt
+    mkdir -p $vx_root_mnt
+
+    # Activate the volume group
+    vgchange -ay $vg
+
+    dir=$(find "/dev/$vg" -name "var_encrypted")
+    (echo "" | cryptsetup open $dir var_decrypted) || (echo "insecure" | cryptsetup open $dir var_decrypted)
+
+    mount /dev/mapper/var_decrypted $vx_config_mnt
+
+    # We have to do this to ensure the tar command does not change
+    # any contents on the root partition, even though all we copy are symlinks
+    mount -o ro /dev/mapper/Vx--vg-root $vx_root_mnt
+
+    if ! grep 'luks,tpm2-device=auto' ${vx_root_mnt}/etc/crypttab > /dev/null; then
+      new_secure_boot_state=0
+    else
+      new_secure_boot_state=1
+    fi
+
+    new_machine_type=$(cat ${vx_config_mnt}/vx/config/machine-type)
+    new_qa_state=$(cat ${vx_config_mnt}/vx/config/is-qa-image)
+    new_prod_cert_hash=$(sha256sum ${vx_root_mnt}/vx/code/vxsuite/libs/auth/certs/prod/vx-cert-authority-cert.pem | cut -d' ' -f1)
+
+    # Default to running the config wizard
+    # Note: This could override the configuration of an image that
+    # did not set this flag as part of setup-machine/lockdown
+    touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
+
+    if [[ $previous_secure_boot_state != $new_secure_boot_state ]]; then
+      if [[ $DEBUG == 1 ]]; then echo "Secure Boot state does not match"; fi
+    elif [[ $previous_machine_type != $new_machine_type ]]; then
+      if [[ $DEBUG == 1 ]]; then echo "Machine Type does not match"; fi
+    elif [[ $previous_qa_state != $new_qa_state ]]; then
+      if [[ $DEBUG == 1 ]]; then echo "QA Image state does not match"; fi
+    elif [[ $previous_prod_cert_hash != $new_prod_cert_hash ]]; then
+      if [[ $DEBUG == 1 ]]; then echo "Prod Cert state does not match"; fi
+    else
+      if [[ -d "${vx_config_mnt}/vx/config" && -f "${vx_config_tarball_path}" ]]; then
+        tar --extract --file=${vx_config_tarball_path} --gzip --verbose --keep-directory-symlink -C /
+        rm -f "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT" > /dev/null 2>&1
+      fi
+    fi
+
+    # Create a flag file to automatically expand the var partition
+    # on the newly flashed image first boot, regardless of config transfer
+    touch ${vx_config_mnt}/vx/config/EXPAND_VAR
+
+    umount $vx_config_mnt
+    rm -rf $vx_config_mnt
+
+    umount $vx_root_mnt
+    rm -rf $vx_root_mnt
+
+    cryptsetup close var_decrypted
+    vgchange -an $vg
+    clear
+  fi
+}
 
 function flash_keys() {
     # use dmidecode to detect if we're on a Surface Go
@@ -315,7 +424,6 @@ else
     mount "/dev/${part}" /mnt
 fi
 
-
 clear
 ignore=()
 if [[ -n $data ]]; then 
@@ -416,11 +524,15 @@ echo "Flashing image"
 echo "$_path/$_toflash"
 echo "to disk"
 echo "$_datadisk"
+echo ""
+echo "The flash will automatically begin in 10 seconds, unless you choose not to continue."
+echo ""
 echo "Continue? [y/N]"
 
-read -r answer
+read -t 10 -r flash_answer
+flash_answer="${flash_answer:-y}"
 
-if [[ $answer != 'y' && $answer != 'Y' ]]; then
+if [[ $flash_answer != 'y' && $flash_answer != 'Y' ]]; then
     exit
 fi
 
@@ -431,8 +543,10 @@ statussize="$(echo "$_finalsize" | cut -d '.' -f 1)"
 if ! (echo "$statussize" | grep -qo "G"); then
     statussize="${statussize}G"
 fi 
-$_compression -c -d $_path/"$_toflash" | pv -s "${statussize}" > "$_datadisk"
 
+detect_existing_vx_config
+
+$_compression -c -d $_path/"$_toflash" | pv -s "${statussize}" > "$_datadisk"
 
 sleep 3
 if [ $_hashash == 1 ]; then 
@@ -446,17 +560,24 @@ fi
 
 umount /mnt
 
-# We need to check whether the image is signed or not
-# so we mount the boot partition and look for the signed efi file
-# If it's not found, use the default; otherwise, use the signed file
-mount "${_datadisk}p1" /mnt
-sleep 3
+# Assumptions are made about our datadisk
+# partition "1" is the boot partition
+# partition "3" is the LVM partition
+datadisk_suffix=$(echo $_datadisk | cut -d'/' -f3)
+flashed_root_partition=$(lsblk -l | grep $datadisk_suffix | grep part | awk '{print $1}' | grep '1$')
 
+# Determine if this is a signed image or not
+is_signed_image=0
+mount "/dev/${flashed_root_partition}" /mnt
+sleep 3
 efi_loader="\\EFI\\debian\\shimx64.efi"
 if [[ -f "/mnt/EFI/debian/VxLinux-signed.efi" ]]; then
   efi_loader="\\EFI\\debian\\VxLinux-signed.efi"
+  is_signed_image=1
 fi
 umount /mnt
+
+restore_vx_config
 
 # Get the current set of boot entries
 efibootmgr -v | grep 'EFI\\debian' > /tmp/current_boot
@@ -500,11 +621,17 @@ else
   efibootmgr -o ${usb_entry},${new_entry}
 fi
 
+# Force an initial boot to the newly created entry, just in case the
+# USB is not removed.
+# NOTE: This is a one time change that will not affect the stored boot order
+efibootmgr -n ${new_entry}
+
 clear
 echo "The flash was successful!"
 echo ""
 echo "Be sure to remove the vx-iso USB. Press Return/Enter to reboot."
-read -r
-echo "Rebooting in 5 seconds..."
-sleep 5
+echo "(The system will automatically reboot in 10 seconds.)"
+read -t 10 -r
+echo "Rebooting..."
+
 systemctl reboot 
