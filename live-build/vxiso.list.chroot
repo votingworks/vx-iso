@@ -24,6 +24,7 @@ mokutil
 network-manager
 openssl
 pv
+qrencode
 systemd
 systemd-sysv
 tpm2-abrmd
@@ -32,3 +33,4 @@ tpm2-tools
 util-linux
 vim
 wget
+xxd
