@@ -19,14 +19,9 @@ fi
 umount /mnt
 
 if [[ ! -z "${VERITY_HASH}" ]]; then
-    if [[ `which xxd` && `which base64` ]]; then
-      base64_hash=$( echo -n ${VERITY_HASH} | xxd -r -p | base64 )
-      echo "System Hash: ${base64_hash}"
-      read -p "Press Enter once you have validated the System Hash."
-    else
-      echo "The tools required to calculate the System Hash are not available. Please reach out to VotingWorks customer support to resolve this."
-      read -p "Press Enter to continue."
-    fi
+  base64_hash=$( echo -n ${VERITY_HASH} | xxd -r -p | base64 )
+  echo "System Hash: ${base64_hash}"
+  read -p "Press Enter once you have validated the System Hash."
 else
     echo "System Hash: UNVERIFIED"
     read -p "This is not a verified image. Press Enter to continue."
