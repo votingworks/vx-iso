@@ -21,12 +21,15 @@ umount /mnt
 if [[ ! -z "${VERITY_HASH}" ]]; then
     if [[ `which xxd` && `which base64` ]]; then
       base64_hash=$( echo -n ${VERITY_HASH} | xxd -r -p | base64 )
-      echo "Signed Hash: ${base64_hash}"
-      read -p "Press Enter once you have validated the Signed Hash."
+      echo "System Hash: ${base64_hash}"
+      read -p "Press Enter once you have validated the System Hash."
+    else
+      echo "The tools required to calculate the System Hash are not available. Please reach out to VotingWorks customer support to resolve this."
+      read -p "Press Enter to continue."
     fi
 else
-    echo "Signed Hash: UNVERIFIED"
-    read -p "This is not a signed image. Press Enter to continue."
+    echo "System Hash: UNVERIFIED"
+    read -p "This is not a verified image. Press Enter to continue."
 fi
 
 # TODO/Future: Add QR code support that can be verified at check.voting.works
