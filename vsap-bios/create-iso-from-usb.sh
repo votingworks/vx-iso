@@ -31,7 +31,7 @@ done
 
 sleep 5
 
-echo "Creating vsap-bios.iso ..."
-dd if=${usb_path} of=vsap-bios.iso bs=256M count=1
+echo "Creating vxmark-bios-update.iso ..."
+dd if=${usb_path} of=vxmark-bios-update.iso bs=256M count=1
 
 exit 0

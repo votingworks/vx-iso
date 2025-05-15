@@ -23,17 +23,17 @@ sudo ./copy-bios-to-usb.sh /dev/sda /tmp/VSAP-BIOS
 ```
 
 This USB drive can now be used to update the VSAP BIOS.
-It can also be used to create a separate vsap-bios.iso file to share with others. 
+It can also be used to create a separate vxmark-bios-update.iso file to share with others. 
 
 ## (Optional) Create an ISO file from the USB
 
-To create a vsap-bios.iso file that can be shared with others, run:
+To create a vxmark-bios-update.iso file that can be shared with others, run:
 ```
 sudo ./create-iso-from-usb.sh /dev/sda
 ```
 
 To create a USB drive from this file (rather than executing the previous steps, run:
 ```
-sudo dd if=/path/to/vsap-bios.iso of=/dev/sda bs=4M
+sudo dd if=/path/to/vxmark-bios-update.iso of=/dev/sda bs=4M
 ```
 
