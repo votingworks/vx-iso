@@ -31,36 +31,7 @@ done
 
 sleep 5
 
-echo "Creating partitions..."
-dd if=/dev/zero of=${usb_path} bs=512 count=1
-
-parted ${usb_path} mklabel gpt
-parted ${usb_path} mkpart ESP fat32 1MiB 4096MiB
-parted ${usb_path} set 1 boot on
-parted ${usb_path} mkpart primary fat32 4096MiB 4196MiB
-parted ${usb_path} mkpart primary ext4 4196MiB 100%
-
-partprobe ${usb_path}
-
-sleep 5
-
-echo "Creating filesystems and labels..."
-mkfs.fat -F32 "${usb_path}1"
-mkfs.fat -F32 "${usb_path}2"
-fatlabel "${usb_path}2" "Keys"
-mkfs.ext4 "${usb_path}3"
-e2label "${usb_path}3" "Data"
-
-partprobe ${usb_path}
-
-sleep 5
-
-echo "Creating required directories..."
-mount "${usb_path}1" /mnt
-
-mkdir -p /mnt/EFI/BOOT
-mkdir -p /mnt/live
-
-umount /mnt
+echo "Creating vxmark-bios-update.iso ..."
+dd if=${usb_path} of=vxmark-bios-update.iso bs=256M count=1
 
 exit 0
