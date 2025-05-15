@@ -41,6 +41,16 @@ if [[ ! -z "${check_mount}" ]]; then
   sleep 2
 fi
 
+if [[ ! -f BOOTX64.EFI ]]; then
+  echo "The BOOTX64.EFI file could not be found. Attempting to download..."
+  ./download-efi.sh
+
+  if [[ ! -f BOOTX64.EFI ]]; then
+    echo "Error: The BOOTX64.EFI file could not be downloaded. Exiting."
+    exit 1
+  fi
+fi
+
 echo "Mounting ${usb_path}1 to /mnt"
 mount "${usb_path}1" /mnt
 
