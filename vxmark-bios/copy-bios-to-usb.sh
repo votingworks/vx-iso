@@ -56,6 +56,7 @@ mount "${usb_path}1" /mnt
 
 echo "Copying boot files..."
 cp BOOTX64.EFI /mnt/EFI/BOOT/
+cp STARTUP.NSH /mnt/EFI/BOOT/
 
 echo "Copying all BIOS update files..."
 for file in $bios_dir/*
