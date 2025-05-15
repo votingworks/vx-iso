@@ -25,7 +25,7 @@ if [[ ! -d "$bios_dir" ]]; then
   exit 1
 fi
 
-is_removable=$(cat /sys/block/$(basename $usb_path)/removable)
+is_removable=$(cat /sys/block/$(basename $usb_path)/removable || echo 0)
 
 if [[ $is_removable == 0 ]]; then
   echo "The device path you specified is not a removable device."

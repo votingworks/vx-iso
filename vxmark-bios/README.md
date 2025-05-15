@@ -6,6 +6,8 @@ You should use a Linux OS for these steps.
 
 You need to have already extracted the VSAP BIOS zip file on your system. For this example, we will assume the extracted directory path is: /tmp/VSAP-BIOS
 
+You need to know the path to your USB drive. You can use the `lsblk` command to help determine the path. For this example, we will assume it is: /dev/sda
+
 ## Initializing the USB drive
 
 NOTE: THIS WILL DESTROY ANY EXISTING DATA ON THE USB
