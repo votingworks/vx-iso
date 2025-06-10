@@ -580,13 +580,13 @@ umount /mnt
 restore_vx_config
 
 # Get the current set of boot entries
-efibootmgr -v | grep 'EFI\\debian' > /tmp/current_boot
+efibootmgr -v | grep '/File' | grep -i '\\EFI\\debian' > /tmp/current_boot
 
 boot_label=$(basename ${_toflash%%.*})
 install_date=$(date +%Y%m%d)
 # If we're on a surface or a VxDev device, we don't do ESI. 
 if [[ $_surface == 1 || $vxdev == 1 ]]; then
-    echo "adding a boot entry for Debian shim"
+    echo "Creating a boot entry for Surface Go or VxDev image..."
     efibootmgr \
         --create \
         --disk "$_datadisk" \
@@ -595,7 +595,7 @@ if [[ $_surface == 1 || $vxdev == 1 ]]; then
         --loader "\\EFI\\debian\\shimx64.efi" \
         --quiet
 else
-    echo "adding a boot entry for VxLinux"
+    echo "Creating a boot entry for VotingWorks $boot_label image..."
     efibootmgr \
         --create \
         --disk "$_datadisk" \
@@ -606,25 +606,35 @@ else
 fi
 
 # Get the new set of boot entries
-efibootmgr -v | grep 'EFI\\debian' > /tmp/new_boot
+efibootmgr -v | grep '/File' | grep -i 'EFI\\debian' > /tmp/new_boot
 
 new_entry=`diff /tmp/current_boot /tmp/new_boot | grep 'Boot' | cut -d' ' -f2 | cut -d'*' -f1 | sed -e 's/Boot//'`
 
-# Lenovo specific
-usb_entry=`efibootmgr | grep 'USB HDD' | cut -d'*' -f1 | sed -e 's/Boot//'`
+# Get potential USB entries, exclude potential network devices
+usb_entries=$(efibootmgr -v | grep 'USB' | grep -vi network | cut -d' ' -f1 | sed -e s/\*// | sed -e s/Boot// | paste -d, -s) 
 
 # Update the boot order
-if [[ -z $usb_entry ]]; then
-  echo "No USB boot entry detected."
+# This consists of deleting old entries found in /tmp/current_boot
+# then setting the new boot order to usb entries,
+# followed by the new entry
+echo "Deleting old boot entries..."
+for old_entry in $(cat /tmp/current_boot | cut -d' ' -f1 | sed -e s/\*// | sed -e s/Boot//)
+do
+  efibootmgr --delete-bootnum --bootnum $old_entry > /dev/null 2>&1
+done
+
+# Update the boot order
+if [[ -z $usb_entries ]]; then
+  echo "No USB boot entry/entries detected."
 else
-  echo "Modifying boot order."
-  efibootmgr -o ${usb_entry},${new_entry}
+  echo "Modifying boot order..."
+  efibootmgr -o ${usb_entries},${new_entry} > /dev/null 2>&1
 fi
 
 # Force an initial boot to the newly created entry, just in case the
 # USB is not removed.
 # NOTE: This is a one time change that will not affect the stored boot order
-efibootmgr -n ${new_entry}
+efibootmgr -n ${new_entry} > /dev/null 2>&1
 
 clear
 echo "The flash was successful!"
