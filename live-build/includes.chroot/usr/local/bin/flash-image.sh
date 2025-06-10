@@ -49,7 +49,7 @@ function disk_select() {
     ignore=("${items[@]:2}")
 
     if [[ -n $size ]]; then
-        readarray disks < <(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | awk -v var="$_size" '$2 > var {print $1,$2}')
+        readarray disks < <(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | grep -v mmc | grep -v sd[a-z] | awk -v var="$_size" '$2 > var {print $1,$2}')
         # This dumps the newlines at the end of the entries in the lsblk table
         disks=("${disks[@]//$'\n'/}")
         fixed_disks=()
@@ -81,7 +81,7 @@ function disk_select() {
         done
         disks=("${just_disks[@]}")
     else
-        readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | awk '{ print $1 }')
+        readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | grep -v mmc | grep -v sd[a-z] | awk '{ print $1 }')
         # This dumps the newlines at the end of the entries in the lsblk table
         disks=("${disks[@]//$'\n'/}")
 
