@@ -333,7 +333,7 @@ function flash_keys() {
                     if [[ $answer != 'n' && $answer != 'N' ]]; then
                         systemctl reboot --firmware-setup
                     else
-                        echo "Continue without flashing keys?" 
+                        echo "Continue without installing keys?" 
                         read -r answer
 
                         if [[ $answer != 'n' && $answer != 'N' ]]; then
@@ -358,16 +358,16 @@ function flash_keys() {
             keys=$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep -iF "Keys" | awk '{ print $1 }')
 
             if [[ -z $keys ]]; then
-                disk_select "Which disk contains the keys to flash?"
+                disk_select "Which disk contains the keys to install?"
                 
                 if [[ $err == 1 ]]; then
-                    echo "Could not select a disk with keys. Not flashing keys."
+                    echo "Could not select a disk with keys. Not installing keys."
                     return
                 else
                     part_select "$_diskname" "Which partition contains the keys?" 
 
                     if [[ $err == 1 ]]; then
-                        echo "Could not select a partition with keys. Not flashing keys."
+                        echo "Could not select a partition with keys. Not installing keys."
                         return
                     fi
 
@@ -409,15 +409,15 @@ if [[ -n $data ]]; then
     _datadisk="$data"
     mount "/dev/$_datadisk" /mnt
 else
-    disk_select "Which disk contains the image to flash?"
+    disk_select "Which disk contains the image to install?"
     if [[ $err == 1 ]]; then
-        echo "Disk selection failed. Could not select an image to flash. Exiting..."
+        echo "Disk selection failed. Could not select an image to install. Exiting..."
         exit
     fi
 
     part_select "$_diskname" "Which partition contains the image?"
     if [[ $err == 1 ]]; then
-        echo "Partition selection failed. Could not select an image to flash. Exiting..."
+        echo "Partition selection failed. Could not select an image to install. Exiting..."
         exit
     fi
 
@@ -456,17 +456,20 @@ for f in "$_path"/*; do
 done
 
 if [[ -z ${_images[0]} ]]; then
-  echo "Found no image(s) to flash. Exiting..."
+  echo "Found no image(s) to install. Exiting..."
   exit
 fi
 
-echo "Found the following images that might work."
 unset answer
-menu "${_images[@]}" "Please select an image to flash" 
-
-if [[ $err == 1 ]]; then
+if [[ ${#_images[@]} > 1 ]]; then
+  echo "Found the following images that might work."
+  menu "${_images[@]}" "Please select an image to install" 
+  if [[ $err == 1 ]]; then
     echo "Something went wrong, please try again."
     exit
+  fi
+else
+  echo "Only one image (${_images[-1]}) was found. It will be automatically selected."
 fi
 
 if [[ -n $answer ]]; then
@@ -508,7 +511,7 @@ _disk="/dev/nvme0n1"
 _size=$(numfmt --from=iec "${_finalsize}")
 
 clear
-disk_select "Which disk would you like to flash?" "$_size" "${ignore[@]}"
+disk_select "Which disk would you like to install to?" "$_size" "${ignore[@]}"
 
 if [[ $err == 1 ]]; then
     echo "No disks were big enough for the image! Exiting..."
@@ -520,12 +523,12 @@ if echo "$_toflash" | grep -iF "vxdev"; then
     vxdev=1
 fi
 
-echo "Flashing image" 
+echo "Installing image" 
 echo "$_path/$_toflash"
 echo "to disk"
 echo "$_datadisk"
 echo ""
-echo "The flash will automatically begin in 10 seconds, unless you choose not to continue."
+echo "The install will automatically begin in 10 seconds, unless you choose not to continue."
 echo ""
 echo "Continue? [y/N]"
 
@@ -582,7 +585,7 @@ restore_vx_config
 # Get the current set of boot entries
 efibootmgr -v | grep '/File' | grep -i '\\EFI\\debian' > /tmp/current_boot
 
-boot_label=$(basename ${_toflash%%.*})
+boot_label=$(basename ${_toflash%%.img.*})
 install_date=$(date +%Y%m%d)
 # If we're on a surface or a VxDev device, we don't do ESI. 
 if [[ $_surface == 1 || $vxdev == 1 ]]; then
@@ -637,7 +640,7 @@ fi
 efibootmgr -n ${new_entry} > /dev/null 2>&1
 
 clear
-echo "The flash was successful!"
+echo "The install was successful!"
 echo ""
 echo "Be sure to remove the vx-iso USB. Press Return/Enter to reboot."
 echo "(The system will automatically reboot in 10 seconds.)"
