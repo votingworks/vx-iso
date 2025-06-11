@@ -609,7 +609,7 @@ else
 fi
 
 # Get the new set of boot entries
-efibootmgr -v | grep '/File' | grep -i 'EFI\\debian' > /tmp/new_boot
+efibootmgr -v | grep '/File' | grep -i '\\EFI\\debian' > /tmp/new_boot
 
 new_entry=`diff /tmp/current_boot /tmp/new_boot | grep 'Boot' | cut -d' ' -f2 | cut -d'*' -f1 | sed -e 's/Boot//'`
 
