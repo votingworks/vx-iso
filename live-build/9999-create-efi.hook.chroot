@@ -4,7 +4,7 @@ vmlinuz_file=`ls -1 /boot/vmlinuz-* | head -1`
 initrd_file=`ls -1 /boot/initrd.img-* | head -1`
 
 # Pad with extra space for dm-verity updates in locked down images
-cmdline="root=live:LABEL=ESP boot=live live-media-path=/live quiet components toram"
+cmdline="root=live:LABEL=ESP boot=live live-media-path=/live quiet loglevel=3 components toram"
 printf "%s%512s" "${cmdline}" > /tmp/cmdline
 
 update-initramfs -u

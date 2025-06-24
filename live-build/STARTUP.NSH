@@ -7,7 +7,7 @@ for %i in fs0 fs1 fs2 fs3 fs4 fs5
     echo Found bootloader on %i:
     %i:
     cd \EFI\BOOT
-    VX64.EFI root=live:LABEL=ESP boot=live live-media-path=/live quiet components toram
+    VX64.EFI root=live:LABEL=ESP boot=live live-media-path=/live quiet loglevel=3 components toram
     goto END
   endif
 endfor
