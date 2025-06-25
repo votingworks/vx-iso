@@ -1,6 +1,11 @@
 #!/bin/bash
 
-IS_ADMIN_RELEASE=${1:-0}
+# should be: 0, 1, or 2
+# default to 0
+# 0 == Customer/Field
+# 1 == Admin
+# 2 == Super Admin
+RELEASE_TYPE=${1:-0}
 
 mkdir tmp-build-dir
 cd tmp-build-dir
@@ -11,7 +16,7 @@ sudo lb clean
 ../create-base-lb-config.sh
 
 mkdir -p config/hooks/live
-echo "IS_ADMIN_RELEASE=${IS_ADMIN_RELEASE}" >> config/environment.chroot
+echo "RELEASE_TYPE=${RELEASE_TYPE}" >> config/environment.chroot
 cp ../*.hook.* config/hooks/live/
 
 cp ../vxiso.list.chroot config/package-lists/

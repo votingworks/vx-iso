@@ -4,4 +4,4 @@
 chmod +x /usr/local/bin/boot-menu.sh
 
 # automatically start it for the user
-echo "ADMIN_RELEASE=${IS_ADMIN_RELEASE} /usr/local/bin/boot-menu.sh" >> /root/.profile
+echo "RELEASE_TYPE=${RELEASE_TYPE} /usr/local/bin/boot-menu.sh" >> /root/.profile

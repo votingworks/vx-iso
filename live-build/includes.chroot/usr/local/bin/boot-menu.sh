@@ -16,7 +16,7 @@ declare -a BASE_MENU=(
 
 # TODO: rethink this since it's only here for [super]admin cases?
 # for [super]admin cases, don't have a default timeout
-if [[ "${ADMIN_RELEASE}" > 0 ]]; then
+if [[ "${RELEASE_TYPE}" == "1" || "${RELEASE_TYPE}" == "2" ]]; then
   dialog_timeout=""
   BASE_MENU[0]="1:Install Image:/usr/local/bin/flash-image.sh"
 fi
@@ -73,12 +73,12 @@ while true; do
   CURRENT_MENU+=("${BASE_MENU[@]}")
   
   # add admin items if building an admin release
-  if [[ "${ADMIN_RELEASE}" == "1" ]]; then
+  if [[ "${RELEASE_TYPE}" == "1" ]]; then
     CURRENT_MENU+=("${ADMIN_MENU[@]}")
   fi
   
   # add super admin items if building a super admin release
-  if [[ "${ADMIN_RELEASE}" == "2" ]]; then
+  if [[ "${RELEASE_TYPE}" == "2" ]]; then
     CURRENT_MENU+=("${ADMIN_MENU[@]}")
     CURRENT_MENU+=("${SUPER_ADMIN_MENU[@]}")
   fi
