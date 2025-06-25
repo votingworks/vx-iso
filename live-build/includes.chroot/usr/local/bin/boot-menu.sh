@@ -13,7 +13,8 @@ declare -a ADMIN_MENU=(
   "4:Delete Boot Entries:/usr/local/bin/delete-boot-entries.sh"
   "5:Reboot to BIOS:systemctl reboot --firmware"
   "6:Open Console:exit 0"
-  "7:Scrape Image(deprecated):/usr/local/bin/scrape-image.sh"
+  "7:Zero out EMMC disk:/usr/local/bin/zero-emmc.sh"
+  "8:Scrape Image(deprecated):/usr/local/bin/scrape-image.sh"
 )
 
 # Build dialog menu arguments from menu items
