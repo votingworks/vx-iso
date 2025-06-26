@@ -272,6 +272,8 @@ function restore_vx_config() {
       if [[ $DEBUG == 1 ]]; then echo "Secure Boot state does not match"; fi
     elif [[ $previous_machine_type != $new_machine_type ]]; then
       if [[ $DEBUG == 1 ]]; then echo "Machine Type does not match"; fi
+    elif [[ $previous_machine_id == "0000" ]]; then
+      if [[ $DEBUG == 1 ]]; then echo "Machine ID is the default"; fi
     elif [[ $previous_qa_state != $new_qa_state ]]; then
       if [[ $DEBUG == 1 ]]; then echo "QA Image state does not match"; fi
     elif [[ $previous_prod_cert_hash != $new_prod_cert_hash ]]; then
