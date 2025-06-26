@@ -49,7 +49,14 @@ function disk_select() {
     ignore=("${items[@]:2}")
 
     if [[ -n $size ]]; then
+	# Ideally, we exclude mmc drives
         readarray disks < <(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | grep -v mmc | grep -v sd[a-z] | awk -v var="$_size" '$2 > var {print $1,$2}')
+
+	# If no appropriate drives were found, remove the mmc restriction
+	if [[ ${#disks[@]} -eq 0 ]]; then
+          readarray disks < <(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | grep -v sd[a-z] | awk -v var="$_size" '$2 > var {print $1,$2}')
+	fi
+
         # This dumps the newlines at the end of the entries in the lsblk table
         disks=("${disks[@]//$'\n'/}")
         fixed_disks=()
@@ -82,6 +89,11 @@ function disk_select() {
         disks=("${just_disks[@]}")
     else
         readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | grep -v mmc | grep -v sd[a-z] | awk '{ print $1 }')
+
+	# If no appropriate drives were found, remove the mmc restriction
+	if [[ ${#disks[@]} -eq 0 ]]; then
+          readarray disks < <(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep "disk" | grep -v sd[a-z] | awk '{ print $1 }')
+	fi
         # This dumps the newlines at the end of the entries in the lsblk table
         disks=("${disks[@]//$'\n'/}")
 
