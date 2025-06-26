@@ -5,9 +5,21 @@
 # 0 == Customer/Field
 # 1 == Admin
 # 2 == Super Admin
-RELEASE_TYPE=${1:-0}
+RELEASE_TYPE=${1:-"field"}
 
-mkdir tmp-build-dir
+if [[ "${RELEASE_TYPE}" != "field" &&
+      "${RELEASE_TYPE}" != "admin" &&
+      "${RELEASE_TYPE}" != "superadmin" ]]; then
+
+  echo "Usage: $0 [field|admin|superadmin]"
+  echo ""
+  echo "By default, this builds a field release with limited functionality."
+  echo "The admin option grants additional functionality without full system access."
+  echo "The superadmin option grants full system access. Use with caution."
+  exit 1
+fi
+
+mkdir -p tmp-build-dir
 cd tmp-build-dir
 
 # Clean up any previous build
