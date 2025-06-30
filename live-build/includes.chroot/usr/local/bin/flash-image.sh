@@ -281,6 +281,13 @@ function restore_vx_config() {
     else
       if [[ -d "${vx_config_mnt}/vx/config" && -f "${vx_config_tarball_path}" ]]; then
         tar --extract --file=${vx_config_tarball_path} --gzip --verbose --keep-directory-symlink -C /
+
+	# Since we're bypassing the config wizard, need to run
+	# the fipsinstall step on first boot
+        touch "${vx_config_mnt}/vx/config/RUN_FIPS_INSTALL"
+	chmod 777 "${vx_config_mnt}/vx/config/RUN_FIPS_INSTALL"
+
+	# Don't run basic config wizard since the config was persisted
         rm -f "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT" > /dev/null 2>&1
       fi
     fi
