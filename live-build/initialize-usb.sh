@@ -13,10 +13,10 @@ if [[ -z "$usb_path" ]]; then
   exit 1
 fi
 
-is_removable=$(cat /sys/block/$(basename $usb_path)/removable || echo 0)
+drive_type=$(lsblk -n --nodeps -o TRAN ${usb_path} 2>/dev/null)
 
-if [[ $is_removable == 0 ]]; then
-  echo "The device path you specified is not a removable device."
+if [[ $drive_type != "usb" ]]; then
+  echo "The device path you specified is not a usb device."
   echo "Please check the device path ($usb_path) you provided."
   exit 1
 fi

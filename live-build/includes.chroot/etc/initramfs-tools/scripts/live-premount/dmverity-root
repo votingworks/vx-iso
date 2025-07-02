@@ -56,16 +56,16 @@ fi
 # since it is possible multiple USB devices could be present
 # It's also possible for the device path naming to differ from the standard
 # /dev/sd[a-z] pattern, so we search for removable devices
-# The key here is looking for the removable device (RM) flag
+# Rather than using the removable device (RM) flag, we are using
+# the device transport type (TRAN) flag. Newer USB drives can show
+# up as not removable, so the RM flag is no longer reliable.
 # We only look for our dm-verity filesystem on partition 1, for context
-echo "#################################"
-echo " Looking for devices"
-echo "#################################"
+echo "Looking for potential usb devices to validate..."
 sleep 5
-lsblk --nodeps -o NAME,RM | awk '$2 == "1"' | cut -d' ' -f1
+lsblk --nodeps -o NAME,TRAN | awk '$2 == "usb" {print $1}'
 sleep 5
 
-for device in `lsblk --nodeps -o NAME,RM | awk '$2 == "1"' | cut -d' ' -f1`
+for device in $(lsblk --nodeps -o NAME,TRAN | awk '$2 == "usb" {print $1}')
 do
   mkdir -p /mnt
   mount /dev/${device}1 /mnt
