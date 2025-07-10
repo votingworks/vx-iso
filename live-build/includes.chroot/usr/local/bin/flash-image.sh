@@ -603,8 +603,10 @@ umount /mnt
 
 restore_vx_config
 
-# Get the current set of boot entries
-efibootmgr -v | grep '/File' | grep -i '\\EFI\\debian' > /tmp/current_boot
+# Get the current set of VxWorks boot entries
+# For now, we rely on our use of the "Installed <date>" notation
+# in boot entries created by VxWorks
+efibootmgr -v | grep -E '\bInstalled [0-9]{8}\b' | grep '/File' | grep -i '\\EFI\\debian' > /tmp/current_boot
 
 boot_label=$(basename ${_toflash%%.img.*})
 install_date=$(date +%Y%m%d)
@@ -630,7 +632,7 @@ else
 fi
 
 # Get the new set of boot entries
-efibootmgr -v | grep '/File' | grep -i '\\EFI\\debian' > /tmp/new_boot
+efibootmgr -v | grep -E '\bInstalled [0-9]{8}\b' | grep '/File' | grep -i '\\EFI\\debian' > /tmp/new_boot
 
 new_entry=`diff /tmp/current_boot /tmp/new_boot | grep 'Boot' | cut -d' ' -f2 | cut -d'*' -f1 | sed -e 's/Boot//'`
 
