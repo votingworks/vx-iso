@@ -13,6 +13,27 @@ clear
 
 vx_config_tarball_path="/vx_config.tar.gz"
 
+function wait_for_usb_or_keyboard() {
+
+  usb_drives=$(lsblk --nodeps -o NAME,TRAN | awk '$2 == "usb" {print $1}')
+
+  while true; do
+    if read -t 0.1 -n 1; then
+      break
+    fi
+
+    for drive in ${usb_drives}
+    do
+      if [[ ! -e "/dev/${drive}" ]]; then
+	break 2
+      fi
+    done
+
+    sleep 0.5
+
+  done
+}
+
 function menu() {
 
     # Due to quirks of how bash passes arrays, all args are one array. The
@@ -663,9 +684,8 @@ efibootmgr -n ${new_entry} > /dev/null 2>&1
 clear
 echo "The install was successful!"
 echo ""
-echo "Be sure to remove the vx-iso USB. Press Return/Enter to reboot."
-echo "(The system will automatically reboot in 10 seconds.)"
-read -t 10 -r
+echo "To reboot, remove the USB drive or press any key to reboot."
+wait_for_usb_or_keyboard
 echo "Rebooting..."
 
 systemctl reboot 
