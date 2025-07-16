@@ -8,10 +8,11 @@ We recommend a fast, 64GB+ USB drive to maximize performance.
 
 ## Creating a vx-iso USB drive
 
-For these steps, we will assume that your USB is mounted at /dev/sda.
+For these steps, we will assume that your USB is mounted at /dev/sdX.
 If your USB mounts to a different device path, be sure to use that. 
+You can see where your USB is mounted using `lsblk`.
 We also assume that you have downloaded or been provided a vx-iso tarball. 
-In this example, we will assume the path is: /tmp/vx-iso-unsigned.tgz
+In this example, we will assume the path is: /tmp/vxiso.tar
 
 If you have not already cloned the repo, you will need to do that.
 ```
@@ -27,17 +28,17 @@ NOTE: THIS WILL DESTROY ANY EXISTING DATA ON THE USB
 
 To initialize your USB, run:
 ```
-sudo ./initialize-usb.sh /dev/sda 
+sudo ./initialize-usb.sh /dev/sdX
 ```
 
 Next, you need to extract the vx-iso tarball so the required tools and files can be installed on the USB drive. (You only need to perform this step if you are installing the vx-iso application for the first time or updating to a newer version.) To do that, run:
 ```
-./extract-build-assets.sh /tmp/vx-iso-unsigned.tgz
+./extract-build-assets.sh /tmp/vxiso.tar
 ```
 
 The final step is to install vx-iso to the USB. To do that, run:
 ```
-sudo ./install-vx-iso-to-usb.sh /dev/sda
+sudo ./install-vx-iso-to-usb.sh /dev/sdX
 ```
 
 At this point, you will have a USB that can run the vx-iso tool.
@@ -53,12 +54,13 @@ Assuming a `Data` partition mounted at: `/media/username/Data`
 Assuming an application image at: `/tmp/vxscan.img.lz4`
 
 ```
-cp /tmp/vxscan.img.lz4 /media/username/Data/ && sync
+sudo cp /tmp/vxscan.img.lz4 /media/username/Data/ && sudo sync
 ```
 
 You can now use the vx-iso USB to install this application image on other systems. 
 
 ## Copying Secure Boot keys to the USB
+
 Note: This section only applies if you need to install Secure Boot keys to a system.
 
 As mentioned previously, a `Keys` partition should be automatically mounted when you attach the vx-iso USB to your Linux system. Assuming you have the necessary Secure Boot keys, you need to copy them to the `Keys` partition of the USB. 
