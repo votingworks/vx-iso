@@ -12,7 +12,7 @@ For these steps, we will assume that your USB is mounted at /dev/sdX.
 If your USB mounts to a different device path, be sure to use that. 
 You can see where your USB is mounted using `lsblk`.
 We also assume that you have downloaded or been provided a vx-iso tarball. 
-In this example, we will assume the path is: /tmp/vxiso.tar
+In this example, we will assume the path is: /tmp/vxiso.tgz
 
 If you have not already cloned the repo, you will need to do that.
 ```
@@ -33,7 +33,7 @@ sudo ./initialize-usb.sh /dev/sdX
 
 Next, you need to extract the vx-iso tarball so the required tools and files can be installed on the USB drive. (You only need to perform this step if you are installing the vx-iso application for the first time or updating to a newer version.) To do that, run:
 ```
-./extract-build-assets.sh /tmp/vxiso.tar
+./extract-build-assets.sh /tmp/vxiso.tgz
 ```
 
 The final step is to install vx-iso to the USB. To do that, run:
