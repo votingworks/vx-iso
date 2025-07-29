@@ -231,7 +231,7 @@ function detect_existing_vx_config() {
     if [ -d "${vx_config_mnt}/vx/config" ]; then
       previous_machine_type=$(cat ${vx_config_mnt}/vx/config/machine-type)
       previous_machine_id=$(cat ${vx_config_mnt}/vx/config/machine-id)
-      tar --exclude="${vx_config_mnt}/vx/config/app-flags" -czvf ${vx_config_tarball_path} ${vx_config_mnt}/vx/config
+      tar --exclude="${vx_config_mnt}/vx/config/app-flags" --exclude="${vx_config_mnt}/vx/config/fipsmodule.cnf" -czvf ${vx_config_tarball_path} ${vx_config_mnt}/vx/config
     fi
 
     previous_qa_state=$(cat ${vx_config_mnt}/vx/config/is-qa-image)
