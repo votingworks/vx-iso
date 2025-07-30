@@ -28,7 +28,8 @@ sudo lb clean
 ../create-base-lb-config.sh
 
 mkdir -p config/hooks/live
-echo "RELEASE_TYPE=${RELEASE_TYPE}" >> config/environment.chroot
+echo "RELEASE_TYPE=${RELEASE_TYPE}" > config/environment.chroot
+echo "VERSION=$( cat ../VERSION )" >> config/environment.chroot
 cp ../*.hook.* config/hooks/live/
 
 cp ../vxiso.list.chroot config/package-lists/

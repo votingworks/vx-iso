@@ -7,6 +7,10 @@ trap '' SIGINT SIGTSTP SIGTERM
 timeout=30
 dialog_timeout="--timeout ${timeout}"
 
+version="(undefined)"
+if [[ "${VERSION}" ]]; then
+  version="( ${VERSION} )"
+fi
 # vx-iso functionality that should always be present
 declare -a BASE_MENU=(
   "1:Install Image (default after ${timeout} seconds):/usr/local/bin/flash-image.sh"
@@ -98,7 +102,7 @@ while true; do
   # if the dialog is returned to during the same session,
   # the timeout is removed, assuming the user has a keyboard
   # and is unlikely to want an automatic selection
-  choice=$(DIALOG_TIMEOUT=5 dialog ${dialog_timeout} --clear --title "VX-ISO Menu" \
+  choice=$(DIALOG_TIMEOUT=5 dialog ${dialog_timeout} --clear --title "VX-ISO Menu ${version}" \
     --menu "Please select an option: " $menu_height 50 $num_items \
     "${dialog_args[@]}" \
     2>&1 >/dev/tty)
