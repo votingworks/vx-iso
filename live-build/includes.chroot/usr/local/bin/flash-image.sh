@@ -4,6 +4,12 @@
 
 trap '' SIGINT SIGTSTP SIGTERM
 
+full_install="no"
+
+if [[ $1 == "full_install" ]]; then
+  full_install="yes"
+fi
+
 err=0
 
 # This is to evade any race conditions with the display buffer that cuts off
@@ -248,6 +254,37 @@ function detect_existing_vx_config() {
     # Deactivate the volume group
     vgchange -an Vx-vg
 
+    clear
+  fi
+}
+
+function require_config_wizard() {
+
+  vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
+
+  if [[ -n $vg && $vg == "Vx-vg" ]]; then
+    vx_config_mnt="/tmp/vx_config_mnt"
+    mkdir -p $vx_config_mnt
+
+    # Activate the volume group
+    vgchange -ay $vg
+
+    dir=$(find "/dev/$vg" -name "var_encrypted")
+    (echo "" | cryptsetup open $dir var_decrypted) || (echo "insecure" | cryptsetup open $dir var_decrypted)
+
+    mount /dev/mapper/var_decrypted $vx_config_mnt
+
+    # Require the config wizard to run
+    touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
+    
+    # Create a flag file to automatically expand the var partition
+    touch ${vx_config_mnt}/vx/config/EXPAND_VAR
+
+    umount $vx_config_mnt
+    rm -rf $vx_config_mnt
+
+    cryptsetup close var_decrypted
+    vgchange -an $vg
     clear
   fi
 }
@@ -589,7 +626,9 @@ if ! (echo "$statussize" | grep -qo "G"); then
     statussize="${statussize}G"
 fi 
 
-detect_existing_vx_config
+if [[ $full_install != "yes" ]]; then
+  detect_existing_vx_config
+fi
 
 $_compression -c -d $_path/"$_toflash" | pv -s "${statussize}" > "$_datadisk"
 
@@ -622,7 +661,11 @@ if [[ -f "/mnt/EFI/debian/VxLinux-signed.efi" ]]; then
 fi
 umount /mnt
 
-restore_vx_config
+if [[ $full_install != "yes" ]]; then
+  restore_vx_config
+else
+  require_config_wizard
+fi
 
 # Get the current set of VxWorks boot entries
 # For now, we rely on our use of the "Installed <date>" notation
