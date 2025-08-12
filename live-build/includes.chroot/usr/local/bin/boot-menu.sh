@@ -27,14 +27,15 @@ fi
 
 # additional vx-iso functionality for internal/admin use
 declare -a ADMIN_MENU=(
-  "4:Delete Boot Entries:/usr/local/bin/delete-boot-entries.sh"
-  "5:Reboot to BIOS:systemctl reboot --firmware"
-  "6:Zero out EMMC disk:/usr/local/bin/zero-emmc.sh"
+  "4:Install Image (Clear Configuration):/usr/local/bin/flash-image.sh full_install"
+  "5:Delete Boot Entries:/usr/local/bin/delete-boot-entries.sh"
+  "6:Reboot to BIOS:systemctl reboot --firmware"
+  "7:Zero out EMMC disk:/usr/local/bin/zero-emmc.sh"
 )
 
 # admin functionality that should be reserved for superusers
 declare -a SUPER_ADMIN_MENU=(
-  "7:Open Console:exit 0"
+  "8:Open Console:exit 0"
 )
 
 # Build dialog menu arguments from menu items
