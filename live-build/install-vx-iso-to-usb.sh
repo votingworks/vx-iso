@@ -56,7 +56,7 @@ sync
 
 umount /mnt
 
-echo "Updating Data partition permissions..."
+echo "Setting Data partition permissions..."
 mount "${usb_path}3" /mnt
 chmod 777 /mnt/.
 umount /mnt
