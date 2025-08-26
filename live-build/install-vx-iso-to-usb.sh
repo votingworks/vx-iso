@@ -56,4 +56,9 @@ sync
 
 umount /mnt
 
+echo "Setting Data partition permissions..."
+mount "${usb_path}3" /mnt
+chmod 777 /mnt/.
+umount /mnt
+
 exit 0
