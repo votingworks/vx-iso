@@ -63,4 +63,9 @@ mkdir -p /mnt/live
 
 umount /mnt
 
+echo "Fixing permissions..."
+mount "${usb_path}3" /mnt
+chmod 777 /mnt/.
+umount /mnt
+
 exit 0
