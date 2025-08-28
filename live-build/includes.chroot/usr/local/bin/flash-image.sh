@@ -655,10 +655,22 @@ is_signed_image=0
 mount "/dev/${flashed_root_partition}" /mnt
 sleep 3
 efi_loader="\\EFI\\debian\\shimx64.efi"
+system_efi_path="/mnt/EFI/debian/shimx64.efi"
 if [[ -f "/mnt/EFI/debian/VxLinux-signed.efi" ]]; then
   efi_loader="\\EFI\\debian\\VxLinux-signed.efi"
+  system_efi_path="/mnt/EFI/debian/VxLinux-signed.efi"
   is_signed_image=1
 fi
+
+# due to inconsistent BIOS/firmware boot order behaviors
+# we copy our EFI to standard locations to override the defaults
+# some BIOS/firmware configurations implement outside of our control
+# NOTE: not adding grubx64.efi for now
+for efi in shimx64.efi bootx64.efi
+do
+  cp -f ${system_efi_path} /mnt/EFI/debian/${efi} 2>/dev/null
+done
+
 umount /mnt
 
 if [[ $full_install != "yes" ]]; then
