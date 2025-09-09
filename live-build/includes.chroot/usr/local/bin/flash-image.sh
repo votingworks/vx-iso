@@ -9,7 +9,6 @@ trap '' SIGINT SIGTSTP SIGTERM
 # environment, storage does not persist.
 # At the end of a run, this log file will be written to
 # the Data partition
-# TODO: Set up an error handler to capture the log, if possible
 log_file="/tmp/flash-image.log"
 touch $log_file
 
@@ -306,28 +305,41 @@ function require_config_wizard() {
   write_log "function require_config_wizard"
   vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
 
+  write_log "vg: ${vg}"
+
   if [[ -n $vg && $vg == "Vx-vg" ]]; then
     vx_config_mnt="/tmp/vx_config_mnt"
     mkdir -p $vx_config_mnt
 
     # Activate the volume group
+    write_log "activating the ${vg} volume group"
     vgchange -ay $vg
 
     dir=$(find "/dev/$vg" -name "var_encrypted")
+    write_log "var_encrypted dir: ${dir}"
+
+    write_log "opening the encrypted volume"
     (echo "" | cryptsetup open $dir var_decrypted) || (echo "insecure" | cryptsetup open $dir var_decrypted)
 
+    write_log "mounting var_decrypted to ${vx_config_mnt}"
     mount /dev/mapper/var_decrypted $vx_config_mnt
 
     # Require the config wizard to run
+    write_log "create RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT flag file"
     touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
     
     # Create a flag file to automatically expand the var partition
+    write_log "create EXPAND_VAR flag file"
     touch ${vx_config_mnt}/vx/config/EXPAND_VAR
 
+    write_log "unmounting config mount"
     umount $vx_config_mnt
     rm -rf $vx_config_mnt
 
+    write_log "close var_decrypted"
     cryptsetup close var_decrypted
+
+    write_log "deactivate the ${vg} volume group"
     vgchange -an $vg
     clear
   fi
@@ -336,8 +348,9 @@ function require_config_wizard() {
 function restore_vx_config() {
 
   write_log "function restore_vx_config"
-
   vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
+
+  write_log "vg: ${vg}"
 
   if [[ -n $vg && $vg == "Vx-vg" ]]; then
     vx_config_mnt="/tmp/vx_config_mnt"
@@ -346,26 +359,38 @@ function restore_vx_config() {
     mkdir -p $vx_root_mnt
 
     # Activate the volume group
+    write_log "activating the ${vg} volume group"
     vgchange -ay $vg
 
     dir=$(find "/dev/$vg" -name "var_encrypted")
+    write_log "var_encrypted dir: ${dir}"
+
+    write_log "opening the encrypted volume"
     (echo "" | cryptsetup open $dir var_decrypted) || (echo "insecure" | cryptsetup open $dir var_decrypted)
 
+    write_log "mounting var_decrypted to ${vx_config_mnt}"
     mount /dev/mapper/var_decrypted $vx_config_mnt
 
     # We have to do this to ensure the tar command does not change
     # any contents on the root partition, even though all we copy are symlinks
+    write_log "mounting Vx--vg-root (read only) to ${vx_root_mnt}"
     mount -o ro /dev/mapper/Vx--vg-root $vx_root_mnt
 
+    write_log "checking for tpm entry in /etc/crypttab"
     if ! grep 'luks,tpm2-device=auto' ${vx_root_mnt}/etc/crypttab > /dev/null; then
       new_secure_boot_state=0
     else
       new_secure_boot_state=1
     fi
+    write_log "new_secure_boot_state: ${new_secure_boot_state}"
 
     new_machine_type=$(cat ${vx_config_mnt}/vx/config/machine-type)
+    write_log "new_machine_type: ${new_machine_type}"
+
     new_qa_state=$(cat ${vx_config_mnt}/vx/config/is-qa-image)
+    write_log "new_qa_state: ${new_qa_state}"
     new_prod_cert_hash=$(sha256sum ${vx_root_mnt}/vx/code/vxsuite/libs/auth/certs/prod/vx-cert-authority-cert.pem | cut -d' ' -f1)
+    write_log "new_prod_cert_hash: ${new_prod_cert_hash}"
 
     # Default to running the config wizard
     # Note: This could override the configuration of an image that
@@ -384,10 +409,12 @@ function restore_vx_config() {
       if [[ $DEBUG == 1 ]]; then echo "Prod Cert state does not match"; fi
     else
       if [[ -d "${vx_config_mnt}/vx/config" && -f "${vx_config_tarball_path}" ]]; then
+	write_log "Extract the old vx config from ${vx_config_tarball_path}"
         tar --extract --file=${vx_config_tarball_path} --gzip --verbose --keep-directory-symlink -C /
 
 	# Since we're bypassing the config wizard, need to run
 	# the fipsinstall step on first boot
+	write_log "Create the RUN_FIPS_INSTALL flag file"
         touch "${vx_config_mnt}/vx/config/RUN_FIPS_INSTALL"
 	chmod 777 "${vx_config_mnt}/vx/config/RUN_FIPS_INSTALL"
 
@@ -398,15 +425,20 @@ function restore_vx_config() {
 
     # Create a flag file to automatically expand the var partition
     # on the newly flashed image first boot, regardless of config transfer
+    write_log "create EXPAND_VAR flag file"
     touch ${vx_config_mnt}/vx/config/EXPAND_VAR
 
+    write_log "unmounting config and root mounts"
     umount $vx_config_mnt
     rm -rf $vx_config_mnt
 
     umount $vx_root_mnt
     rm -rf $vx_root_mnt
 
+    write_log "close var_decrypted"
     cryptsetup close var_decrypted
+
+    write_log "deactivate the ${vg} volume group"
     vgchange -an $vg
     clear
   fi
@@ -746,7 +778,8 @@ fi
 # in boot entries created by VxWorks
 efibootmgr -v | grep -E '\bInstalled [0-9]{8}\b' | grep '/File' | grep -i '\\EFI\\debian' > /tmp/current_boot
 
-write_log "todo output /tmp/current_boot"
+write_log "Current boot entries"
+write_log "$(cat /tmp/current_boot)"
 
 boot_label=$(basename ${_toflash%%.img.*})
 install_date=$(date +%Y%m%d)
@@ -778,7 +811,8 @@ fi
 # Get the new set of boot entries
 efibootmgr -v | grep -E '\bInstalled [0-9]{8}\b' | grep '/File' | grep -i '\\EFI\\debian' > /tmp/new_boot
 
-write_log "todo output /tmp/new_boot"
+write_log "New boot entries"
+write_log "$(cat /tmp/new_boot)"
 
 new_entry=`diff /tmp/current_boot /tmp/new_boot | grep 'Boot' | cut -d' ' -f2 | cut -d'*' -f1 | sed -e 's/Boot//'`
 
