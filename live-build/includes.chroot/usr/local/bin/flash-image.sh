@@ -848,16 +848,19 @@ fi
 # NOTE: This is a one time change that will not affect the stored boot order
 efibootmgr -n ${new_entry} > /dev/null 2>&1
 
-clear
-echo "The install was successful!"
-echo ""
-echo "To reboot, remove the USB drive or press any key to reboot."
-
 # todo: make this more dynamic?
 # todo: put it in a function triggered on any script exit?
 mount /dev/$data /mnt
-cp $log_file /mnt/${install_date}-${boot_label}.log
+flash_log="${install_date}-${boot_label}-install.log"
+cp $log_file /mnt/${flash_log}
 umount /mnt
+
+clear
+echo "The install was successful!"
+echo "You can find a log of the install process in: ${flash_log}"
+echo "It will be in the Data directory of this USB drive."
+echo ""
+echo "To reboot, remove the USB drive or press any key to reboot."
 
 wait_for_usb_or_keyboard
 echo "Rebooting..."
