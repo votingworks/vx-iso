@@ -15,7 +15,8 @@ fi
 declare -a BASE_MENU=(
   "1:Install Image (default after ${timeout} seconds):/usr/local/bin/flash-image.sh"
   "2:Compute System Hash:/usr/local/bin/compute-system-hash.sh"
-  "3:Shutdown:systemctl poweroff"
+  "3:Record System Info:/usr/local/bin/record-system-info.sh"
+  "4:Shutdown:systemctl poweroff"
 )
 
 # TODO: rethink this since it's only here for [super]admin cases?
@@ -27,15 +28,15 @@ fi
 
 # additional vx-iso functionality for internal/admin use
 declare -a ADMIN_MENU=(
-  "4:Install Image (Clear Configuration):/usr/local/bin/flash-image.sh full_install"
-  "5:Delete Boot Entries:/usr/local/bin/delete-boot-entries.sh"
-  "6:Reboot to BIOS:systemctl reboot --firmware"
-  "7:Zero out EMMC disk:/usr/local/bin/zero-emmc.sh"
+  "5:Install Image (Clear Configuration):/usr/local/bin/flash-image.sh full_install"
+  "6:Delete Boot Entries:/usr/local/bin/delete-boot-entries.sh"
+  "7:Reboot to BIOS:systemctl reboot --firmware"
+  "8:Zero out EMMC disk:/usr/local/bin/zero-emmc.sh"
 )
 
 # admin functionality that should be reserved for superusers
 declare -a SUPER_ADMIN_MENU=(
-  "8:Open Console:exit 0"
+  "9:Open Console:exit 0"
 )
 
 # Build dialog menu arguments from menu items
