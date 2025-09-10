@@ -14,8 +14,10 @@
 
 trap '' SIGINT SIGTSTP SIGTERM
 
-log_file="/tmp/system-state.log"
-touch $log_file
+log_file=$(mktemp)
+# just for convenience when copying off the USB since mktemp
+# only grants 600
+chmod 644 $log_file
 
 function write_log() {
   local message="$1"
@@ -75,7 +77,7 @@ efibootmgr_info
 vxiso_info
 lvm_info
 
-report_date=$(date +%Y%m%d)
+report_date=$(date +%Y%m%d%H%M%S)
 report_name="${report_date}-system-info.log"
 data=$(lsblk -nblo NAME,LABEL | grep -F "Data" | awk '{ print $1 }')
 mount /dev/$data /mnt

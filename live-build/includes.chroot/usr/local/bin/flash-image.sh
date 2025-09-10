@@ -9,8 +9,10 @@ trap '' SIGINT SIGTSTP SIGTERM
 # environment, storage does not persist.
 # At the end of a run, this log file will be written to
 # the Data partition
-log_file="/tmp/flash-image.log"
-touch $log_file
+log_file=$(mktemp)
+# just for convenience when copying off the USB since mktemp
+# only grants 600
+chmod 644 $log_file
 
 full_install="no"
 
@@ -851,7 +853,8 @@ efibootmgr -n ${new_entry} > /dev/null 2>&1
 # todo: make this more dynamic?
 # todo: put it in a function triggered on any script exit?
 mount /dev/$data /mnt
-flash_log="${install_date}-${boot_label}-install.log"
+flash_date=$(date +%Y%m%d%H%M%S)
+flash_log="${flash_date}-${boot_label}-install.log"
 cp $log_file /mnt/${flash_log}
 umount /mnt
 
