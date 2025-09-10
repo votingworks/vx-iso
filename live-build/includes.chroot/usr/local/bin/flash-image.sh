@@ -860,7 +860,7 @@ echo "The install was successful!"
 echo "You can find a log of the install process in: ${flash_log}"
 echo "It will be in the Data directory of this USB drive."
 echo ""
-echo "To reboot, remove the USB drive or press any key to reboot."
+echo "To reboot, remove the USB drive or press any key."
 
 wait_for_usb_or_keyboard
 echo "Rebooting..."
