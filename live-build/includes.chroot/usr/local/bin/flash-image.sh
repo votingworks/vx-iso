@@ -4,11 +4,30 @@
 
 trap '' SIGINT SIGTSTP SIGTERM
 
+# This is a log file that will be used throughout the 
+# execution of this script. Since vx-iso runs from a live
+# environment, storage does not persist.
+# At the end of a run, this log file will be written to
+# the Data partition
+log_file=$(mktemp)
+# just for convenience when copying off the USB since mktemp
+# only grants 600
+chmod 644 $log_file
+
 full_install="no"
 
 if [[ $1 == "full_install" ]]; then
   full_install="yes"
 fi
+
+function write_log() {
+  local message="$1"
+  local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  
+  echo "${timestamp}: ${message}" >> $log_file
+}
+
+write_log "full_install: ${full_install}"
 
 err=0
 
@@ -75,6 +94,7 @@ function disk_select() {
     size="${items[1]}"
     ignore=("${items[@]:2}")
 
+    write_log "disk_select"
     if [[ -n $size ]]; then
 	# Ideally, we exclude mmc drives
         readarray disks < <(lsblk -x SIZE -nblo NAME,SIZE,TYPE | grep "disk" | grep -v mmc | grep -v sd[a-z] | awk -v var="$_size" '$2 > var {print $1,$2}')
@@ -130,11 +150,14 @@ function disk_select() {
         # If there's only one disk, no need for a menu
         if [[ -z ${disks[0]} ]]; then
             echo "There are no compatible disks!"
+	    write_log "There are no compatible disks"
             err=1
             return 
         elif [[ ${#disks[@]} == 1 ]]; then
             _diskname=${disks[0]}
             _datadisk="/dev/${disks[0]}"
+	    write_log "_diskname: ${_diskname}"
+	    write_log "_datadisk: ${_datadisk}"
             return
         else
             unset answer
@@ -159,6 +182,8 @@ function disk_select() {
                 _diskname=${disks[-1]}
                 _datadisk="/dev/${disks[-1]}"
             fi
+	    write_log "selected _diskname: ${_diskname}"
+	    write_log "selected _datadisk: ${_datadisk}"
             return
         fi
     done
@@ -207,7 +232,10 @@ function part_select() {
 
 function detect_existing_vx_config() {
 
+  write_log "function detect_existing_vx_config"
   vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
+
+  write_log "vg: ${vg}"
 
   if [[ -n $vg && $vg == "Vx-vg" ]]; then
 
@@ -217,42 +245,58 @@ function detect_existing_vx_config() {
     mkdir -p $vx_root_mnt
 
     # Activate the volume group
+    write_log "activating the ${vg} volume group"
     vgchange -ay $vg
     
     # Find the encrypted volume
     dir=$(find "/dev/$vg" -name "var_encrypted")
+    write_log "var_encrypted dir: ${dir}"
 
     # Open the encrypted volume
+    write_log "opening the encrypted volume"
     (echo "" | cryptsetup open $dir var_decrypted) || (echo "insecure" | cryptsetup open $dir var_decrypted)
 
+    write_log "mounting var_decrypted to ${vx_config_mnt}"
     mount /dev/mapper/var_decrypted $vx_config_mnt
+    write_log "mounting Vx--vg-root to ${vx_root_mnt}"
     mount /dev/mapper/Vx--vg-root $vx_root_mnt
 
+    write_log "checking for tpm entry in /etc/crypttab"
     if ! grep 'luks,tpm2-device=auto' ${vx_root_mnt}/etc/crypttab > /dev/null; then
       previous_secure_boot_state=0
     else
       previous_secure_boot_state=1
     fi
+    write_log "previous_secure_boot_state: ${previous_secure_boot_state}"
 
+    write_log "check for /vx/config directory"
     if [ -d "${vx_config_mnt}/vx/config" ]; then
       previous_machine_type=$(cat ${vx_config_mnt}/vx/config/machine-type)
+      write_log "previous_machine_type: ${previous_machine_type}"
       previous_machine_id=$(cat ${vx_config_mnt}/vx/config/machine-id)
+      write_log "previous_machine_id: ${previous_machine_id}"
+      write_log "create vxconfig tarball"
       tar --exclude="${vx_config_mnt}/vx/config/app-flags" --exclude="${vx_config_mnt}/vx/config/fipsmodule.cnf" -czvf ${vx_config_tarball_path} ${vx_config_mnt}/vx/config
     fi
 
     previous_qa_state=$(cat ${vx_config_mnt}/vx/config/is-qa-image)
+    write_log "previous_qa_state: ${previous_qa_state}"
     previous_prod_cert_hash=$(sha256sum ${vx_root_mnt}/vx/code/vxsuite/libs/auth/certs/prod/vx-cert-authority-cert.pem | cut -d' ' -f1)
+    write_log "previous_prod_cert_hash: ${previous_prod_cert_hash}"
 
+    write_log "unmounting config and root mounts"
     umount $vx_config_mnt
     umount $vx_root_mnt
     rm -rf $vx_config_mnt
     rm -rf $vx_root_mnt
 
     # Close the encrypted volume
+    write_log "close var_decrypted"
     cryptsetup close var_decrypted
 
     # Deactivate the volume group
-    vgchange -an Vx-vg
+    write_log "deactivate the ${vg} volume group"
+    vgchange -an $vg
 
     clear
   fi
@@ -260,30 +304,44 @@ function detect_existing_vx_config() {
 
 function require_config_wizard() {
 
+  write_log "function require_config_wizard"
   vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
+
+  write_log "vg: ${vg}"
 
   if [[ -n $vg && $vg == "Vx-vg" ]]; then
     vx_config_mnt="/tmp/vx_config_mnt"
     mkdir -p $vx_config_mnt
 
     # Activate the volume group
+    write_log "activating the ${vg} volume group"
     vgchange -ay $vg
 
     dir=$(find "/dev/$vg" -name "var_encrypted")
+    write_log "var_encrypted dir: ${dir}"
+
+    write_log "opening the encrypted volume"
     (echo "" | cryptsetup open $dir var_decrypted) || (echo "insecure" | cryptsetup open $dir var_decrypted)
 
+    write_log "mounting var_decrypted to ${vx_config_mnt}"
     mount /dev/mapper/var_decrypted $vx_config_mnt
 
     # Require the config wizard to run
+    write_log "create RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT flag file"
     touch "${vx_config_mnt}/vx/config/RUN_BASIC_CONFIGURATION_ON_NEXT_BOOT"
     
     # Create a flag file to automatically expand the var partition
+    write_log "create EXPAND_VAR flag file"
     touch ${vx_config_mnt}/vx/config/EXPAND_VAR
 
+    write_log "unmounting config mount"
     umount $vx_config_mnt
     rm -rf $vx_config_mnt
 
+    write_log "close var_decrypted"
     cryptsetup close var_decrypted
+
+    write_log "deactivate the ${vg} volume group"
     vgchange -an $vg
     clear
   fi
@@ -291,7 +349,10 @@ function require_config_wizard() {
 
 function restore_vx_config() {
 
+  write_log "function restore_vx_config"
   vg=$(vgscan | sed -s 's/.*"\(.*\)".*/\1/g')
+
+  write_log "vg: ${vg}"
 
   if [[ -n $vg && $vg == "Vx-vg" ]]; then
     vx_config_mnt="/tmp/vx_config_mnt"
@@ -300,26 +361,38 @@ function restore_vx_config() {
     mkdir -p $vx_root_mnt
 
     # Activate the volume group
+    write_log "activating the ${vg} volume group"
     vgchange -ay $vg
 
     dir=$(find "/dev/$vg" -name "var_encrypted")
+    write_log "var_encrypted dir: ${dir}"
+
+    write_log "opening the encrypted volume"
     (echo "" | cryptsetup open $dir var_decrypted) || (echo "insecure" | cryptsetup open $dir var_decrypted)
 
+    write_log "mounting var_decrypted to ${vx_config_mnt}"
     mount /dev/mapper/var_decrypted $vx_config_mnt
 
     # We have to do this to ensure the tar command does not change
     # any contents on the root partition, even though all we copy are symlinks
+    write_log "mounting Vx--vg-root (read only) to ${vx_root_mnt}"
     mount -o ro /dev/mapper/Vx--vg-root $vx_root_mnt
 
+    write_log "checking for tpm entry in /etc/crypttab"
     if ! grep 'luks,tpm2-device=auto' ${vx_root_mnt}/etc/crypttab > /dev/null; then
       new_secure_boot_state=0
     else
       new_secure_boot_state=1
     fi
+    write_log "new_secure_boot_state: ${new_secure_boot_state}"
 
     new_machine_type=$(cat ${vx_config_mnt}/vx/config/machine-type)
+    write_log "new_machine_type: ${new_machine_type}"
+
     new_qa_state=$(cat ${vx_config_mnt}/vx/config/is-qa-image)
+    write_log "new_qa_state: ${new_qa_state}"
     new_prod_cert_hash=$(sha256sum ${vx_root_mnt}/vx/code/vxsuite/libs/auth/certs/prod/vx-cert-authority-cert.pem | cut -d' ' -f1)
+    write_log "new_prod_cert_hash: ${new_prod_cert_hash}"
 
     # Default to running the config wizard
     # Note: This could override the configuration of an image that
@@ -338,10 +411,12 @@ function restore_vx_config() {
       if [[ $DEBUG == 1 ]]; then echo "Prod Cert state does not match"; fi
     else
       if [[ -d "${vx_config_mnt}/vx/config" && -f "${vx_config_tarball_path}" ]]; then
+	write_log "Extract the old vx config from ${vx_config_tarball_path}"
         tar --extract --file=${vx_config_tarball_path} --gzip --verbose --keep-directory-symlink -C /
 
 	# Since we're bypassing the config wizard, need to run
 	# the fipsinstall step on first boot
+	write_log "Create the RUN_FIPS_INSTALL flag file"
         touch "${vx_config_mnt}/vx/config/RUN_FIPS_INSTALL"
 	chmod 777 "${vx_config_mnt}/vx/config/RUN_FIPS_INSTALL"
 
@@ -352,21 +427,29 @@ function restore_vx_config() {
 
     # Create a flag file to automatically expand the var partition
     # on the newly flashed image first boot, regardless of config transfer
+    write_log "create EXPAND_VAR flag file"
     touch ${vx_config_mnt}/vx/config/EXPAND_VAR
 
+    write_log "unmounting config and root mounts"
     umount $vx_config_mnt
     rm -rf $vx_config_mnt
 
     umount $vx_root_mnt
     rm -rf $vx_root_mnt
 
+    write_log "close var_decrypted"
     cryptsetup close var_decrypted
+
+    write_log "deactivate the ${vg} volume group"
     vgchange -an $vg
     clear
   fi
 }
 
 function flash_keys() {
+
+    write_log "function flash_keys"
+
     # use dmidecode to detect if we're on a Surface Go
     if dmidecode | grep -q 'Surface Go'; then
         _surface=1
@@ -486,6 +569,7 @@ data=$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep -iF "Data" | awk '{ print
 
 if [[ -n $data ]]; then
     _datadisk="$data"
+    write_log "mounting /dev/${_datadisk} to /mnt"
     mount "/dev/$_datadisk" /mnt
 else
     disk_select "Which disk contains the image to install?"
@@ -500,6 +584,7 @@ else
         exit
     fi
 
+    write_log "mounting /dev/${part} to /mnt"
     mount "/dev/${part}" /mnt
 fi
 
@@ -559,6 +644,8 @@ else
     _extension=${_extensions[-1]}
 fi
 
+write_log "image to be installed: ${_toflash}"
+
 if [[ $_extension == "lz4" ]]; then
     _compression="lz4"
 elif [[ $_extension == "gz" ]]; then
@@ -589,6 +676,8 @@ _disk="/dev/nvme0n1"
 # Get our image size in raw bytes
 _size=$(numfmt --from=iec "${_finalsize}")
 
+write_log "image size: ${_finalsize} (${_size} bytes)"
+
 clear
 disk_select "Which disk would you like to install to?" "$_size" "${ignore[@]}"
 
@@ -601,6 +690,7 @@ vxdev=0
 if echo "$_toflash" | grep -iF "vxdev"; then
     vxdev=1
 fi
+write_log "vxdev: ${vxdev}"
 
 echo "Installing image" 
 echo "$_path/$_toflash"
@@ -617,6 +707,8 @@ flash_answer="${flash_answer:-y}"
 if [[ $flash_answer != 'y' && $flash_answer != 'Y' ]]; then
     exit
 fi
+
+write_log "Installing ${_path}/${_toflash} to ${_datadisk}"
 
 # If the size of the image is decimal, chop off the decimal point and after so
 # pv doesn't choke on it. This is fine, since pv is only using the size to
@@ -662,6 +754,8 @@ if [[ -f "/mnt/EFI/debian/VxLinux-signed.efi" ]]; then
   is_signed_image=1
 fi
 
+write_log "is_signed_image: ${is_signed_image}"
+
 # due to inconsistent BIOS/firmware boot order behaviors
 # we copy our EFI to standard locations to override the defaults
 # some BIOS/firmware configurations implement outside of our control
@@ -674,8 +768,10 @@ done
 umount /mnt
 
 if [[ $full_install != "yes" ]]; then
+  write_log "Attempting to restore the vx config"
   restore_vx_config
 else
+  write_log "Requiring the basic config wizard to run"
   require_config_wizard
 fi
 
@@ -684,8 +780,15 @@ fi
 # in boot entries created by VxWorks
 efibootmgr -v | grep -E '\bInstalled [0-9]{8}\b' | grep '/File' | grep -i '\\EFI\\debian' > /tmp/current_boot
 
+write_log "Current boot entries"
+write_log "$(cat /tmp/current_boot)"
+
 boot_label=$(basename ${_toflash%%.img.*})
 install_date=$(date +%Y%m%d)
+
+write_log "boot_label: ${boot_label}"
+write_log "install_date: ${install_date}"
+
 # If we're on a surface or a VxDev device, we don't do ESI. 
 if [[ $_surface == 1 || $vxdev == 1 ]]; then
     echo "Creating a boot entry for Surface Go or VxDev image..."
@@ -710,10 +813,17 @@ fi
 # Get the new set of boot entries
 efibootmgr -v | grep -E '\bInstalled [0-9]{8}\b' | grep '/File' | grep -i '\\EFI\\debian' > /tmp/new_boot
 
+write_log "New boot entries"
+write_log "$(cat /tmp/new_boot)"
+
 new_entry=`diff /tmp/current_boot /tmp/new_boot | grep 'Boot' | cut -d' ' -f2 | cut -d'*' -f1 | sed -e 's/Boot//'`
+
+write_log "new_entry: ${new_entry}"
 
 # Get potential USB entries, exclude potential network devices
 usb_entries=$(efibootmgr -v | grep 'USB' | grep -vi network | cut -d' ' -f1 | sed -e s/\*// | sed -e s/Boot// | paste -d, -s) 
+
+write_log "usb_entries: ${usb_entries}"
 
 # Update the boot order
 # This consists of deleting old entries found in /tmp/current_boot
@@ -722,6 +832,7 @@ usb_entries=$(efibootmgr -v | grep 'USB' | grep -vi network | cut -d' ' -f1 | se
 echo "Deleting old boot entries..."
 for old_entry in $(cat /tmp/current_boot | cut -d' ' -f1 | sed -e s/\*// | sed -e s/Boot//)
 do
+  write_log "deleting boot entry: ${old_entry}"
   efibootmgr --delete-bootnum --bootnum $old_entry > /dev/null 2>&1
 done
 
@@ -730,6 +841,7 @@ if [[ -z $usb_entries ]]; then
   echo "No USB boot entry/entries detected."
 else
   echo "Modifying boot order..."
+  write_log "update boot order: ${usb_entries},${new_entry}"
   efibootmgr -o ${usb_entries},${new_entry} > /dev/null 2>&1
 fi
 
@@ -738,10 +850,21 @@ fi
 # NOTE: This is a one time change that will not affect the stored boot order
 efibootmgr -n ${new_entry} > /dev/null 2>&1
 
+# todo: make this more dynamic?
+# todo: put it in a function triggered on any script exit?
+mount /dev/$data /mnt
+flash_date=$(date +%Y%m%d%H%M%S)
+flash_log="${flash_date}-${boot_label}-install.log"
+cp $log_file /mnt/${flash_log}
+umount /mnt
+
 clear
 echo "The install was successful!"
+echo "You can find a log of the install process in: ${flash_log}"
+echo "It will be in the Data directory of this USB drive."
 echo ""
-echo "To reboot, remove the USB drive or press any key to reboot."
+echo "To reboot, remove the USB drive or press any key."
+
 wait_for_usb_or_keyboard
 echo "Rebooting..."
 
