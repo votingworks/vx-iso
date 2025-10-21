@@ -6,7 +6,8 @@ set -euo pipefail
 
 # we only support installing to nvme and emmc drives
 # the expected naming convention is nvme0n1 and mmcblk0
-# if we can't find our signed efi on either, we do not calculate a hash
+# the signed efi should be on the first partition (p1)
+# if we can't find our signed efi on either drive, do not calculate a hash
 candidate_drives="nvme0n1 mmcblk0"
 
 VERITY_HASH=""
