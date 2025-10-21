@@ -4,19 +4,28 @@ trap '' SIGINT SIGTSTP SIGTERM
 
 set -euo pipefail
 
-#hardcoded to nvme for now
-mount -o ro /dev/nvme0n1p1 /mnt
+# we only support installing to nvme and emmc drives
+# the expected naming convention is nvme0n1 and mmcblk0
+# the signed efi should be on the first partition (p1)
+# if we can't find our signed efi on either drive, do not calculate a hash
+candidate_drives="nvme0n1 mmcblk0"
 
-# Check for the VxLinux-signed.efi and handle if it doesn't exist
-# That aside, we're using the strings command to extract the verity hash
-# from the signed efi binary to later use when calculating the SHV
-if [[ -f /mnt/EFI/debian/VxLinux-signed.efi ]]; then
-  VERITY_HASH=$(strings /mnt/EFI/debian/VxLinux-signed.efi | grep -o verity.hash=[a-zA-Z0-9]* | cut -d'=' -f2)
-else
-  VERITY_HASH=""
-fi
+VERITY_HASH=""
 
-umount /mnt
+for local_drive in $candidate_drives
+do
+  local_drive="/dev/${local_drive}"
+  if [[ -b $local_drive ]]; then
+    if mount -o ro ${local_drive}p1 /mnt > /dev/null 2>&1; then
+      if [[ -f /mnt/EFI/debian/VxLinux-signed.efi ]]; then
+        VERITY_HASH=$(strings /mnt/EFI/debian/VxLinux-signed.efi | grep -o verity.hash=[a-zA-Z0-9]* | cut -d'=' -f2)
+        umount /mnt
+        break
+      fi
+      umount /mnt
+    fi
+  fi
+done
 
 if [[ ! -z "${VERITY_HASH}" ]]; then
   base64_hash=$( echo -n ${VERITY_HASH} | xxd -r -p | base64 )
