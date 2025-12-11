@@ -563,6 +563,13 @@ function flash_keys() {
 
 flash_keys
 
+# Detect any existing vx config data so we can filter
+# potential image candidates based on machine type or other criteria
+# that matches the current system
+if [[ $full_install != "yes" ]]; then
+  detect_existing_vx_config
+fi
+
 clear
 
 data=$(lsblk -x SIZE -nblo NAME,LABEL,SIZE,TYPE | grep -iF "Data" | awk '{ print $1 }')
@@ -612,8 +619,16 @@ for f in "$_path"/*; do
     _extension="${_filename##*.}"
 
     if [[ "$_extension" == "gz" || "$_extension" == "lz4" ]]; then
+      if [[ ${RELEASE_TYPE} == "field" ]]; then
+        machine_type_pattern_match="\b(vx)?${previous_machine_type}\b"
+        if [[ "$_filename" =~ ${machine_type_pattern_match} ]]; then
+          _images+=("$_filename")
+          _extensions+=("$_extension")
+        fi
+      else
         _images+=("$_filename")
         _extensions+=("$_extension")
+      fi
     elif [[ "$_extension" == "sha256sum" ]]; then
         _hashash=1
     fi
@@ -718,9 +733,6 @@ if ! (echo "$statussize" | grep -qo "G"); then
     statussize="${statussize}G"
 fi 
 
-if [[ $full_install != "yes" ]]; then
-  detect_existing_vx_config
-fi
 
 $_compression -c -d $_path/"$_toflash" | pv -s "${statussize}" > "$_datadisk"
 
