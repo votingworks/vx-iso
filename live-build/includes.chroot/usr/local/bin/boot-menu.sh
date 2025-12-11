@@ -4,6 +4,8 @@
 # Don't allow ctrl+ commands that could break out to a console
 trap '' SIGINT SIGTSTP SIGTERM
 
+export RELEASE_TYPE
+
 timeout=30
 dialog_timeout="--timeout ${timeout}"
 
