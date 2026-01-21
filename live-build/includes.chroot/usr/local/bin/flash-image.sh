@@ -283,8 +283,13 @@ function detect_existing_vx_config() {
       # Only create a tarball if a valid machine cert is present
       # This fixes an edge case that made it possible to copy over
       # an incomplete config
+      if [[ "${previous_machine_type}" == "admin" || "${previous_machine_type}" == "poll-book" ]]; then
+        machine_cert_path="${vx_config_mnt}/vx/config/vx-${previous_machine_type}-cert-authority-cert.pem"
+      else
+        machine_cert_path="${vx_config_mnt}/vx/config/vx-${previous_machine_type}-cert.pem"
+      fi
       write_log "check for valid machine cert"
-      if [ -f "${vx_config_mnt}/vx/config/vx-${previous_machine_type}-cert.pem" ]; then
+      if [ -f "${machine_cert_path}" ]; then
         write_log "create vxconfig tarball"
         tar --exclude="${vx_config_mnt}/vx/config/app-flags" --exclude="${vx_config_mnt}/vx/config/fipsmodule.cnf" -czvf ${vx_config_tarball_path} ${vx_config_mnt}/vx/config
       fi
