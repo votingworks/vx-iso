@@ -292,6 +292,8 @@ function detect_existing_vx_config() {
       if [ -f "${machine_cert_path}" ]; then
         write_log "create vxconfig tarball"
         tar --exclude="${vx_config_mnt}/vx/config/app-flags" --exclude="${vx_config_mnt}/vx/config/fipsmodule.cnf" -czvf ${vx_config_tarball_path} ${vx_config_mnt}/vx/config
+      else
+        write_log "machine cert not found - not creating vxconfig tarball"
       fi
     fi
     write_log "unmounting config and root mounts"
