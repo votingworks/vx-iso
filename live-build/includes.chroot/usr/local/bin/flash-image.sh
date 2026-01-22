@@ -275,15 +275,27 @@ function detect_existing_vx_config() {
       write_log "previous_machine_type: ${previous_machine_type}"
       previous_machine_id=$(cat ${vx_config_mnt}/vx/config/machine-id)
       write_log "previous_machine_id: ${previous_machine_id}"
-      write_log "create vxconfig tarball"
-      tar --exclude="${vx_config_mnt}/vx/config/app-flags" --exclude="${vx_config_mnt}/vx/config/fipsmodule.cnf" -czvf ${vx_config_tarball_path} ${vx_config_mnt}/vx/config
+      previous_qa_state=$(cat ${vx_config_mnt}/vx/config/is-qa-image)
+      write_log "previous_qa_state: ${previous_qa_state}"
+      previous_prod_cert_hash=$(sha256sum ${vx_root_mnt}/vx/code/vxsuite/libs/auth/certs/prod/vx-cert-authority-cert.pem | cut -d' ' -f1)
+      write_log "previous_prod_cert_hash: ${previous_prod_cert_hash}"
+
+      # Only create a tarball if a valid machine cert is present
+      # This fixes an edge case that made it possible to copy over
+      # an incomplete config
+      if [[ "${previous_machine_type}" == "admin" || "${previous_machine_type}" == "poll-book" ]]; then
+        machine_cert_path="${vx_config_mnt}/vx/config/vx-${previous_machine_type}-cert-authority-cert.pem"
+      else
+        machine_cert_path="${vx_config_mnt}/vx/config/vx-${previous_machine_type}-cert.pem"
+      fi
+      write_log "check for valid machine cert"
+      if [ -f "${machine_cert_path}" ]; then
+        write_log "create vxconfig tarball"
+        tar --exclude="${vx_config_mnt}/vx/config/app-flags" --exclude="${vx_config_mnt}/vx/config/fipsmodule.cnf" -czvf ${vx_config_tarball_path} ${vx_config_mnt}/vx/config
+      else
+        write_log "machine cert not found - not creating vxconfig tarball"
+      fi
     fi
-
-    previous_qa_state=$(cat ${vx_config_mnt}/vx/config/is-qa-image)
-    write_log "previous_qa_state: ${previous_qa_state}"
-    previous_prod_cert_hash=$(sha256sum ${vx_root_mnt}/vx/code/vxsuite/libs/auth/certs/prod/vx-cert-authority-cert.pem | cut -d' ' -f1)
-    write_log "previous_prod_cert_hash: ${previous_prod_cert_hash}"
-
     write_log "unmounting config and root mounts"
     umount $vx_config_mnt
     umount $vx_root_mnt
