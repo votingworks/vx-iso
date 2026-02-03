@@ -82,6 +82,13 @@ function lsusb_info {
   write_log "lsusb end"
 }
 
+function uname_info {
+  write_log "uname start"
+  write_log "$(uname -a)"
+  write_log "uname end"
+}
+
+uname_info
 dmidecode_info
 ddcutil_info
 mokutil_info
