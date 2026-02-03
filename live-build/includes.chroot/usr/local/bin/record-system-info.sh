@@ -9,7 +9,7 @@
 #
 # if Vx--vg-root is available, read-only mount and get more info?
 #
-# add tools to vx-iso for things like lsusb, lspci, etc...?
+# add tools to vx-iso for things like lspci...?
 #
 
 trap '' SIGINT SIGTSTP SIGTERM
@@ -33,6 +33,12 @@ function dmidecode_info() {
   write_log "$(dmidecode -t processor)"
   write_log "$(dmidecode -t memory)"
   write_log "dmidecode end"
+}
+
+function ddcutil_info() {
+  write_log "ddcutil detect start"
+  write_log "$(ddcutil detect --verbose)"
+  write_log "ddcutil detect end"
 }
 
 function mokutil_info() {
@@ -70,12 +76,27 @@ function lvm_info {
   write_log "LVM end"
 }
 
+function lsusb_info {
+  write_log "lsusb start"
+  write_log "$(lsusb -v)"
+  write_log "lsusb end"
+}
+
+function uname_info {
+  write_log "uname start"
+  write_log "$(uname -a)"
+  write_log "uname end"
+}
+
+uname_info
 dmidecode_info
+ddcutil_info
 mokutil_info
 lsblk_info
 efibootmgr_info
 vxiso_info
 lvm_info
+lsusb_info
 
 report_date=$(date +%Y%m%d%H%M%S)
 report_name="${report_date}-system-info.log"

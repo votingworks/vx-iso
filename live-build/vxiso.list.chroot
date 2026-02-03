@@ -11,6 +11,7 @@ ca-certificates
 cloud-init
 coreutils
 curl
+ddcutil
 dialog
 dmidecode
 efibootmgr
