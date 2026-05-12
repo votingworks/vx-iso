@@ -34,11 +34,12 @@ declare -a ADMIN_MENU=(
   "6:Delete Boot Entries:/usr/local/bin/delete-boot-entries.sh"
   "7:Reboot to BIOS:systemctl reboot --firmware"
   "8:Zero out EMMC disk:/usr/local/bin/zero-emmc.sh"
+  "9:Reduce or Restore Available Disk Space:/usr/local/bin/reduce-or-restore-available-disk-space.sh"
 )
 
 # admin functionality that should be reserved for superusers
 declare -a SUPER_ADMIN_MENU=(
-  "9:Open Console:exit 0"
+  "10:Open Console:exit 0"
 )
 
 # Build dialog menu arguments from menu items
