@@ -47,7 +47,7 @@ do
   fi
 done
 
-# Since we found an embedded hash, let's calculate the hash live
+# If we find an embedded hash, let's calculate the hash live
 # and compare the values. If they match, display them. If not, raise 
 # an error.
 if [[ ! -z "${EMBEDDED_HASH}" ]]; then
