@@ -24,44 +24,11 @@ function calculate_verity_hash() {
   rm /tmp/verity_hash.img
 }
 
-# we only support installing to nvme and emmc drives
-# the expected naming convention is nvme0n1 and mmcblk0
-# the signed efi should be on the first partition (p1)
-# if we can't find our signed efi on either drive, do not calculate a hash
-candidate_drives="nvme0n1 mmcblk0"
-
-EMBEDDED_HASH=""
-
-for local_drive in $candidate_drives
-do
-  local_drive="/dev/${local_drive}"
-  if [[ -b $local_drive ]]; then
-    if mount -o ro ${local_drive}p1 /mnt > /dev/null 2>&1; then
-      if [[ -f /mnt/EFI/debian/VxLinux-signed.efi ]]; then
-        EMBEDDED_HASH=$(strings /mnt/EFI/debian/VxLinux-signed.efi | grep -o verity.hash=[a-zA-Z0-9]* | cut -d'=' -f2)
-        umount /mnt
-        break
-      fi
-      umount /mnt
-    fi
-  fi
-done
-
-# If we find an embedded hash, let's calculate the hash live
-# and compare the values. If they match, display them. If not, raise 
-# an error.
-if [[ ! -z "${EMBEDDED_HASH}" ]]; then
-
+if [[ -e /dev/mapper/Vx--vg-hashes ]]; then
   calculate_verity_hash
-
-  if [[ "${EMBEDDED_HASH}" != "${calculated_hash}" ]]; then
-    echo "System Hash: UNVERIFIED"
-    read -p "This is not a verified image. Press Enter to continue."
-  else
-    base64_hash=$( echo -n ${calculated_hash} | xxd -r -p | base64 )
-    echo "System Hash: ${base64_hash}"
-    read -p "Press Enter once you have validated the System Hash."
-  fi
+  base64_hash=$( echo -n ${calculated_hash} | xxd -r -p | base64 )
+  echo "System Hash: ${base64_hash}"
+  read -p "Press Enter once you have validated the System Hash."
 else
     echo "System Hash: UNVERIFIED"
     read -p "This is not a verified image. Press Enter to continue."
