@@ -626,13 +626,37 @@ _toflash=""
 _images=()
 _extensions=()
 
+
+filter_by_machine_type=0
+if [[ ${RELEASE_TYPE} == "field" ]]; then
+  if [[ -n ${previous_machine_type} ]]; then
+    filter_by_machine_type=1
+  fi
+fi
+
 for f in "$_path"/*; do
     _filename="${f##*/}"
     _extension="${_filename##*.}"
 
     if [[ "$_extension" == "gz" || "$_extension" == "lz4" ]]; then
-      if [[ ${RELEASE_TYPE} == "field" ]]; then
-        machine_type_pattern_match="\b(vx)?${previous_machine_type}\b"
+      if [[ ${filter_by_machine_type} == 1 ]]; then
+        # Machine type strings contain no vx prefix and hyphenate. Our image
+        # file names on the other hand, by convention, prepend machine types
+        # with vx and do not hyphenate.
+        #
+        # Machine type | Image file name machine type
+        # -------------------------------------------
+        # admin        | vxadmin
+        # central-scan | vxcentralscan
+        # mark         | vxmark
+        # mark-scan    | vxmarkscan
+        # poll-book    | vxpollbook
+        # print        | vxprint
+        # scan         | vxscan
+        #
+        # Let's properly map between the two here.
+        #
+        machine_type_pattern_match="\bvx${previous_machine_type//-/}\b"
         if [[ "$_filename" =~ ${machine_type_pattern_match} ]]; then
           _images+=("$_filename")
           _extensions+=("$_extension")
