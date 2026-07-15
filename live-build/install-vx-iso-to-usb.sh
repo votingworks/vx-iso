@@ -6,12 +6,31 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 usb_path=$1
-tmp_build_dir="tmp-build-dir"
-bundle_dir="${tmp_build_dir}/assets"
+RELEASE_TYPE=${2:-"field"}
 
 if [[ -z "$usb_path" ]]; then
-  echo "Usage: $0 /dev/sdX"
+  echo "Usage: $0 /dev/sdX [field|admin|superadmin]"
+  echo ""
   echo "You must specify the device path to the USB, e.g. /dev/sda"
+  exit 1
+fi
+
+if [[ "${RELEASE_TYPE}" != "field" &&
+      "${RELEASE_TYPE}" != "admin" &&
+      "${RELEASE_TYPE}" != "superadmin" ]]; then
+
+  echo "Usage: $0 /dev/sdX [field|admin|superadmin]"
+  echo ""
+  echo "You must specify a valid release type. If none is provided, field will"
+  echo "be used by default."
+  exit 1
+fi
+
+tmp_build_dir="tmp-build-dir"
+bundle_dir="${tmp_build_dir}/${RELEASE_TYPE}-assets"
+if [[ ! -d "${bundle_dir}" ]]; then
+  echo "There is not a valid ${RELEASE_TYPE} release to install."
+  echo "Please extract a vx-iso release via extract-build-assets.sh"
   exit 1
 fi
 
