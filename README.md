@@ -4,7 +4,9 @@
 
 You should use a Linux OS for the below steps.
 
-We recommend a fast, 64GB+ USB drive to maximize performance.
+We recommend a fast, 64GB+ USB drive to maximize performance. SanDisk Extreme Pros are a favorite.
+
+Caveat: VxMarkScan, i.e., VSAP, tends to be particular about which models of USB drives it auto-boots from. We're not yet sure if it only boots from smaller capacity USB drives or slower USB drives. Behavior can also vary across devices. We've empirically found Micro Center USB drives to work well with it.
 
 ## Creating a vx-iso USB drive
 
