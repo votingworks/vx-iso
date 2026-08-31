@@ -1,9 +1,10 @@
 #!/bin/bash
 
 vxiso_tarball=$1
-RELEASE_TYPE=${2:-"field"}
+RELEASE_TYPE=$2
 
-if [[ -z "${vxiso_tarball}" ]]; then
+if [[ -z "${vxiso_tarball}" ||
+      -z "${RELEASE_TYPE}" ]]; then
   echo "Usage: $0 /path/to/vxiso.tgz [field|admin|superadmin]"
   echo ""
   echo "Example: $0 ./vx-iso-unsigned-20250305.tgz field"
