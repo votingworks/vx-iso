@@ -13,9 +13,21 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 loopback_img=$1
+RELEASE_TYPE=${2:-"field"}
 
 if [[ -z "$loopback_img" ]]; then
-  echo "Usage: $0 /path/to/vxdbkey.img"
+  echo "Usage: $0 /path/to/vxdbkey.img [field|admin|superadmin]"
+  exit 1
+fi
+
+if [[ "${RELEASE_TYPE}" != "field" &&
+      "${RELEASE_TYPE}" != "admin" &&
+      "${RELEASE_TYPE}" != "superadmin" ]]; then
+
+  echo "Usage: $0 /path/to/vxdbkey.img [field|admin|superadmin]"
+  echo ""
+  echo "You must specify a valid release type. If none is provided, field will"
+  echo "be used by default."
   exit 1
 fi
 
@@ -25,7 +37,7 @@ if [[ ! -f $loopback_img ]]; then
 fi
 
 tmp_build_dir="tmp-build-dir"
-bundle_dir="${tmp_build_dir}/assets"
+bundle_dir="${tmp_build_dir}/${RELEASE_TYPE}-assets"
 bootx64_efi="${bundle_dir}/BOOTX64.EFI"
 vx64_efi="${bundle_dir}/VX64.EFI"
 vxiso_tarball="vx-iso-assets.tgz"
